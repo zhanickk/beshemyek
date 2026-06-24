@@ -234,7 +234,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           (botUsername && text.toLowerCase().includes(`@${botUsername.toLowerCase()}`)) ||
           message.reply_to_message?.from?.is_bot;
         if (mentionsBot && (settings?.ai_replies_enabled ?? true) && text.trim()) {
-          const tone = settings?.tone ?? "Kind, encouraging community host.";
+          const tone = settings?.tone ?? "Chill bro vibe, playful banter, never preachy.";
           const cleanText = botUsername ? text.replace(new RegExp(`@${botUsername}`, "gi"), "").trim() : text;
           const reply = await generateAiReply(cleanText, tone, lang);
           await telegram.sendMessage(chatId, reply, { reply_to_message_id: message.message_id });
