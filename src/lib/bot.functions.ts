@@ -40,6 +40,7 @@ export const upsertPrompt = createServerFn({ method: "POST" })
         text: z.string().min(3),
         category: z.string().default("icebreaker"),
         is_active: z.boolean().default(true),
+        language: z.enum(["en", "ru"]).default("en"),
       })
       .parse(d),
   )
@@ -79,6 +80,7 @@ export const updateChatSettings = createServerFn({ method: "POST" })
         quiet_start: z.number().min(0).max(23).nullable().optional(),
         quiet_end: z.number().min(0).max(23).nullable().optional(),
         tone: z.string().optional(),
+        language: z.enum(["auto", "en", "ru"]).optional(),
       })
       .parse(d),
   )

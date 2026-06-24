@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { generateText } from "ai";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
-import { telegram, verifyTelegramSecret } from "@/lib/telegram.server";
+import { telegram, verifyTelegramSecret, resolveLang, detectLanguage, T, type Lang } from "@/lib/telegram.server";
 
 function getAdmin() {
   return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
@@ -10,26 +10,25 @@ function getAdmin() {
   });
 }
 
-async function generateAiReply(userMessage: string, tone: string): Promise<string> {
+async function generateAiReply(userMessage: string, tone: string, lang: Lang): Promise<string> {
   const key = process.env.LOVABLE_API_KEY;
-  if (!key) return "Hi there! 👋";
+  if (!key) return T.aiFallback[lang];
   const gateway = createLovableAiGatewayProvider(key);
-  const system = `You are a community chat host. Tone: ${tone}
-Keep replies to 1-3 short sentences. Be warm, inclusive, and encouraging. End with a gentle follow-up question to keep conversation going. Never be sarcastic.`;
+  const system = `${T.aiSystem[lang]}\nTone: ${tone}`;
   try {
     const { text } = await generateText({
       model: gateway("google/gemini-3-flash-preview"),
       system,
       prompt: userMessage,
     });
-    return text?.trim() || "That's lovely — tell me more!";
+    return text?.trim() || T.aiFallback[lang];
   } catch (e) {
     console.error("AI reply failed", e);
-    return "I'm here! What's on your mind?";
+    return T.aiFallback[lang];
   }
 }
 
-type TgUser = { id: number; username?: string; first_name?: string; is_bot?: boolean };
+type TgUser = { id: number; username?: string; first_name?: string; is_bot?: boolean; language_code?: string };
 type TgChat = { id: number; type: string; title?: string; username?: string };
 type TgEntity = { type: string; offset: number; length: number };
 type TgMessage = {
@@ -52,7 +51,6 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         const message: TgMessage | undefined = update.message ?? update.edited_message;
         const supabase = getAdmin();
 
-        // Idempotent log
         if (typeof update.update_id === "number") {
           await supabase.from("messages_log").upsert(
             {
@@ -68,7 +66,6 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           );
         }
 
-        // my_chat_member: bot added/removed
         if (update.my_chat_member) {
           const chat = update.my_chat_member.chat;
           const status = update.my_chat_member.new_chat_member?.status;
@@ -88,11 +85,9 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
               .single();
             if (inserted) {
               await supabase.from("bot_settings").insert({ chat_id: inserted.id });
+              const lang = detectLanguage(null, update.my_chat_member.from?.language_code);
               try {
-                await telegram.sendMessage(
-                  chat.id,
-                  "👋 Hey everyone! I'm here to keep the chat lively with conversation starters, mini-polls, and friendly replies when you @mention me. Try <code>/icebreaker</code> to start!",
-                );
+                await telegram.sendMessage(chat.id, T.welcome[lang]);
                 await supabase.from("bot_sends").insert({
                   telegram_chat_id: chat.id,
                   kind: "welcome",
@@ -111,7 +106,6 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
         const chatId = message.chat.id;
         const text = message.text ?? "";
 
-        // Ensure chat exists
         let { data: chatRow } = await supabase
           .from("chats")
           .select("id")
@@ -138,28 +132,28 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           ? await supabase.from("bot_settings").select("*").eq("chat_id", chatRow.id).maybeSingle()
           : { data: null };
 
-        // Bot username for mention detection
+        const lang: Lang = resolveLang(settings?.language, text, message.from?.language_code);
+
         let botUsername: string | undefined;
         try {
           const me: any = await telegram.getMe();
           botUsername = me?.result?.username;
         } catch {}
 
-        // Commands
         if (text.startsWith("/")) {
           const cmd = text.split(/\s|@/)[0].toLowerCase();
           if (cmd === "/start" || cmd === "/help") {
-            await telegram.sendMessage(
-              chatId,
-              "Hi! I help keep this chat fun.\n\n• <b>/icebreaker</b> — random conversation starter\n• <b>/trivia</b> — quick trivia poll\n• <b>/poll</b> Question | Opt1 | Opt2 — custom poll\n• @mention me or reply to me and I'll chat back!",
-            );
+            await telegram.sendMessage(chatId, T.help[lang]);
             return Response.json({ ok: true });
           }
           if (cmd === "/icebreaker") {
-            const { data: prompts } = await supabase.from("prompts").select("text").eq("is_active", true);
-            const prompt = prompts && prompts.length > 0 ? prompts[Math.floor(Math.random() * prompts.length)].text : null;
+            let q = supabase.from("prompts").select("text,language").eq("is_active", true);
+            const { data: allPrompts } = await q;
+            const filtered = (allPrompts ?? []).filter((p: any) => p.language === lang);
+            const pool = filtered.length > 0 ? filtered : (allPrompts ?? []);
+            const prompt = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)].text : null;
             if (prompt) {
-              await telegram.sendMessage(chatId, `💬 <b>Icebreaker:</b>\n${prompt}`);
+              await telegram.sendMessage(chatId, `${T.icebreakerLabel[lang]}\n${prompt}`);
               await supabase.from("bot_sends").insert({
                 telegram_chat_id: chatId,
                 kind: "prompt",
@@ -172,10 +166,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
             const rest = text.slice(cmd.length).trim();
             const parts = rest.split("|").map((s) => s.trim()).filter(Boolean);
             if (parts.length < 3) {
-              await telegram.sendMessage(
-                chatId,
-                "Usage: <code>/poll Question | Option 1 | Option 2 | ...</code>",
-              );
+              await telegram.sendMessage(chatId, T.pollUsage[lang]);
               return Response.json({ ok: true });
             }
             const [question, ...options] = parts;
@@ -195,7 +186,7 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
                 content: question,
               });
             } catch (e: any) {
-              await telegram.sendMessage(chatId, `Couldn't send poll: ${e.message}`);
+              await telegram.sendMessage(chatId, `${T.pollFailed[lang]}${e.message}`);
             }
             return Response.json({ ok: true });
           }
@@ -206,9 +197,8 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
               const gateway = createLovableAiGatewayProvider(key);
               const { text: raw } = await generateText({
                 model: gateway("google/gemini-3-flash-preview"),
-                system:
-                  "Return only JSON: {\"question\":string,\"options\":[string,string,string,string],\"correct\":number(0-3)}. Question must be a fun, general-knowledge trivia question.",
-                prompt: "Generate one trivia question.",
+                system: T.triviaPrompt[lang],
+                prompt: lang === "ru" ? "Сгенерируй один вопрос викторины." : "Generate one trivia question.",
               });
               const cleaned = raw.replace(/```json|```/g, "").trim();
               const parsed = JSON.parse(cleaned);
@@ -233,21 +223,20 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
               });
             } catch (e: any) {
               console.error(e);
-              await telegram.sendMessage(chatId, "Couldn't generate trivia right now, try again in a moment.");
+              await telegram.sendMessage(chatId, T.triviaFailed[lang]);
             }
             return Response.json({ ok: true });
           }
           return Response.json({ ok: true });
         }
 
-        // AI reply on mention or reply-to-bot
         const mentionsBot =
           (botUsername && text.toLowerCase().includes(`@${botUsername.toLowerCase()}`)) ||
           message.reply_to_message?.from?.is_bot;
         if (mentionsBot && (settings?.ai_replies_enabled ?? true) && text.trim()) {
           const tone = settings?.tone ?? "Kind, encouraging community host.";
           const cleanText = botUsername ? text.replace(new RegExp(`@${botUsername}`, "gi"), "").trim() : text;
-          const reply = await generateAiReply(cleanText, tone);
+          const reply = await generateAiReply(cleanText, tone, lang);
           await telegram.sendMessage(chatId, reply, { reply_to_message_id: message.message_id });
           await supabase.from("bot_sends").insert({
             telegram_chat_id: chatId,

@@ -121,6 +121,20 @@ function ChatsPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-1">
+                <Label>Bot language</Label>
+                <Select
+                  value={s.language ?? "auto"}
+                  onValueChange={(v) => updateMut.mutate({ chat_id: chat.id, language: v })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">Auto-detect</SelectItem>
+                    <SelectItem value="en">English</SelectItem>
+                    <SelectItem value="ru">Русский</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </CardContent>
           </Card>
         );
