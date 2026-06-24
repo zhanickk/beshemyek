@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getStats, getBotInfo } from "@/lib/bot.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageCircle, Sparkles, Bot, Activity } from "lucide-react";
+import { OnboardingGuide } from "@/components/OnboardingGuide";
 
 export const Route = createFileRoute("/_authenticated/_app/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard · Chatkeeper" }] }),
@@ -31,6 +32,9 @@ function Dashboard() {
           {botInfo?.username ? <>Connected as <strong>@{botInfo.username}</strong></> : "Telegram bot overview"}
         </p>
       </div>
+
+      <OnboardingGuide />
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {cards.map((c) => {
           const Icon = c.icon;
@@ -47,16 +51,6 @@ function Dashboard() {
           );
         })}
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Get started</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <p>1. Open Settings and click <strong>Set webhook</strong> to connect your bot.</p>
-          <p>2. Add <strong>@{botInfo?.username ?? "your bot"}</strong> to a Telegram group and make it an admin so it can read messages.</p>
-          <p>3. The bot will say hi, then start engaging with conversation starters, polls, and AI replies when mentioned.</p>
-        </CardContent>
-      </Card>
     </div>
   );
 }
