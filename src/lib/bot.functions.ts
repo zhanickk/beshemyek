@@ -40,6 +40,7 @@ export const upsertPrompt = createServerFn({ method: "POST" })
         text: z.string().min(3),
         category: z.string().default("icebreaker"),
         is_active: z.boolean().default(true),
+        language: z.enum(["en", "ru"]).default("en"),
       })
       .parse(d),
   )
