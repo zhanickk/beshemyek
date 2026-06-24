@@ -1,48 +1,13 @@
-## Цель
-Помочь новому админу запустить бота за 6 шагов прямо из дашборда, без внешней документации.
+## Проблема
+Webhook зарегистрирован на `https://beshemyek-dev.lovable.app/...`, который не существует (это попытка превратить опубликованный кастомный поддомен в dev-хост простой подстановкой). Стабильный dev-URL Lovable — `https://project--<project-id>-dev.lovable.app`, поэтому Telegram возвращает 404.
 
-## Что добавим
+## Что поправить
+1. В `src/routes/_authenticated/_app/settings.tsx` заменить логику вычисления `url`:
+   - Использовать project id из env (`VITE_LOVABLE_PROJECT_ID`) и строить URL `https://project--${id}-dev.lovable.app/api/public/telegram/webhook`.
+   - Если хост уже соответствует `project--<id>(-dev)?.lovable.app` или localhost, использовать текущий origin как есть.
+   - Сделать поле URL редактируемым (Input вместо `<code>`), чтобы пользователь мог при необходимости подставить production-домен.
+2. Добавить переменную `VITE_LOVABLE_PROJECT_ID=a4c96bd2-c11d-47a5-9aaa-f867b7072fa3` в `.env` (отдельно от auto-gen Supabase переменных).
+3. После применения нажать «Переустановить webhook» — Telegram примет новый URL и ошибка 404 исчезнет.
 
-### 1. Новый компонент `src/components/OnboardingGuide.tsx`
-Пошаговый чек-лист с прогрессом:
-1. **Создать бота в BotFather** — внешняя ссылка на `https://t.me/BotFather`, краткая инструкция (`/newbot`, `/setprivacy → Disable`).
-2. **Подключить Telegram-коннектор** — статус: подключен/не подключен (определяем по успешности `getBotInfo` server fn). Если нет — кнопка «Открыть Connectors».
-3. **Установить webhook** — кнопка «Set webhook» (переиспользует существующий server fn из Settings). Показывает статус активности.
-4. **Добавить бота в группу** — инструкция + поле «Username бота» (подтягивается из `getMe`), кнопка «Скопировать username».
-5. **Настроить чат** — ссылка на раздел Chats, счётчик подключенных чатов.
-6. **Проверить работу** — список команд (`/icebreaker`, `/trivia`, `/poll`, `@mention`) с возможностью скопировать.
-
-Каждый шаг:
-- Иконка статуса (○ ожидает / ✓ выполнено)
-- Сворачиваемая карточка (Accordion из shadcn)
-- Автоматическое определение выполнения, где возможно (webhook активен, есть чаты, коннектор подключен)
-
-### 2. Server function `src/lib/onboarding.functions.ts`
-`getOnboardingStatus` — возвращает:
-```ts
-{
-  connectorLinked: boolean,   // есть ли TELEGRAM_API_KEY и отвечает ли getMe
-  botUsername: string | null,
-  webhookActive: boolean,     // через getWebhookInfo
-  chatsCount: number,
-}
-```
-Использует `requireSupabaseAuth` + проверку роли admin.
-
-### 3. Интеграция в дашборд
-- На странице `src/routes/_authenticated/_app/dashboard.tsx`: показывать `<OnboardingGuide />` сверху, **пока не выполнены все шаги**. После — сворачивается в маленький баннер «Setup complete ✓» с возможностью развернуть снова.
-- Локализация: RU/EN, определяется по `navigator.language` (или фиксируем RU, раз пользователь общается на русском — уточнить можно позже).
-
-### 4. Мелочи UI
-- Используем существующие shadcn-компоненты: `Card`, `Accordion`, `Button`, `Badge`, `Progress`.
-- Прогресс-бар сверху: `выполнено N из 6`.
-- Toast при успешной установке webhook (уже есть в Settings — переиспользуем хук).
-
-## Что НЕ трогаем
-- Логику бота, webhook-handler, БД, prompts, cron — без изменений.
-- Только UI + одна read-only server fn.
-
-## Технические детали
-- `getOnboardingStatus` кэшируется через TanStack Query с `staleTime: 30s`, инвалидируется после нажатия «Set webhook».
-- `getMe` через connector gateway уже доступен в `telegram.server.ts` — добавим обёртку, если её нет.
-- Все ключи переводов — в существующем словаре `T` из `telegram.server.ts` не пойдут (это серверный), для UI заведём маленький объект прямо в компоненте.
+## Почему не сервером
+Серверный код в Worker'е не знает project id сам по себе; чтение `import.meta.env.VITE_LOVABLE_PROJECT_ID` на клиенте — самый надёжный путь без новых секретов.
