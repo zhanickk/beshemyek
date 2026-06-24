@@ -46,6 +46,7 @@ export type Database = {
           ai_replies_enabled: boolean
           chat_id: string
           id: string
+          language: string
           polls_enabled: boolean
           prompt_frequency: string
           prompt_hour_utc: number
@@ -59,6 +60,7 @@ export type Database = {
           ai_replies_enabled?: boolean
           chat_id: string
           id?: string
+          language?: string
           polls_enabled?: boolean
           prompt_frequency?: string
           prompt_hour_utc?: number
@@ -72,6 +74,7 @@ export type Database = {
           ai_replies_enabled?: boolean
           chat_id?: string
           id?: string
+          language?: string
           polls_enabled?: boolean
           prompt_frequency?: string
           prompt_hour_utc?: number
@@ -223,6 +226,7 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          language: string
           text: string
         }
         Insert: {
@@ -230,6 +234,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          language?: string
           text: string
         }
         Update: {
@@ -237,6 +242,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          language?: string
           text?: string
         }
         Relationships: []
