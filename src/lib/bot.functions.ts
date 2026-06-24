@@ -80,6 +80,7 @@ export const updateChatSettings = createServerFn({ method: "POST" })
         quiet_start: z.number().min(0).max(23).nullable().optional(),
         quiet_end: z.number().min(0).max(23).nullable().optional(),
         tone: z.string().optional(),
+        language: z.enum(["auto", "en", "ru"]).optional(),
       })
       .parse(d),
   )
