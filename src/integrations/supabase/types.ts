@@ -14,16 +14,269 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bot_sends: {
+        Row: {
+          content: string | null
+          id: string
+          kind: string
+          meta: Json | null
+          sent_at: string
+          telegram_chat_id: number
+        }
+        Insert: {
+          content?: string | null
+          id?: string
+          kind: string
+          meta?: Json | null
+          sent_at?: string
+          telegram_chat_id: number
+        }
+        Update: {
+          content?: string | null
+          id?: string
+          kind?: string
+          meta?: Json | null
+          sent_at?: string
+          telegram_chat_id?: number
+        }
+        Relationships: []
+      }
+      bot_settings: {
+        Row: {
+          ai_replies_enabled: boolean
+          chat_id: string
+          id: string
+          polls_enabled: boolean
+          prompt_frequency: string
+          prompt_hour_utc: number
+          prompts_enabled: boolean
+          quiet_end: number | null
+          quiet_start: number | null
+          tone: string
+          updated_at: string
+        }
+        Insert: {
+          ai_replies_enabled?: boolean
+          chat_id: string
+          id?: string
+          polls_enabled?: boolean
+          prompt_frequency?: string
+          prompt_hour_utc?: number
+          prompts_enabled?: boolean
+          quiet_end?: number | null
+          quiet_start?: number | null
+          tone?: string
+          updated_at?: string
+        }
+        Update: {
+          ai_replies_enabled?: boolean
+          chat_id?: string
+          id?: string
+          polls_enabled?: boolean
+          prompt_frequency?: string
+          prompt_hour_utc?: number
+          prompts_enabled?: boolean
+          quiet_end?: number | null
+          quiet_start?: number | null
+          tone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_settings_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: true
+            referencedRelation: "chats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chats: {
+        Row: {
+          chat_type: string | null
+          id: string
+          is_active: boolean
+          joined_at: string
+          telegram_chat_id: number
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          chat_type?: string | null
+          id?: string
+          is_active?: boolean
+          joined_at?: string
+          telegram_chat_id: number
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          chat_type?: string | null
+          id?: string
+          is_active?: boolean
+          joined_at?: string
+          telegram_chat_id?: number
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      messages_log: {
+        Row: {
+          created_at: string
+          from_user_id: number | null
+          from_username: string | null
+          kind: string
+          raw: Json
+          telegram_chat_id: number
+          text: string | null
+          update_id: number
+        }
+        Insert: {
+          created_at?: string
+          from_user_id?: number | null
+          from_username?: string | null
+          kind?: string
+          raw: Json
+          telegram_chat_id: number
+          text?: string | null
+          update_id: number
+        }
+        Update: {
+          created_at?: string
+          from_user_id?: number | null
+          from_username?: string | null
+          kind?: string
+          raw?: Json
+          telegram_chat_id?: number
+          text?: string | null
+          update_id?: number
+        }
+        Relationships: []
+      }
+      polls: {
+        Row: {
+          closed_at: string | null
+          correct_option: number | null
+          id: string
+          is_closed: boolean
+          kind: string
+          options: Json
+          question: string
+          started_at: string
+          telegram_chat_id: number
+          telegram_message_id: number | null
+          telegram_poll_id: string | null
+        }
+        Insert: {
+          closed_at?: string | null
+          correct_option?: number | null
+          id?: string
+          is_closed?: boolean
+          kind?: string
+          options: Json
+          question: string
+          started_at?: string
+          telegram_chat_id: number
+          telegram_message_id?: number | null
+          telegram_poll_id?: string | null
+        }
+        Update: {
+          closed_at?: string | null
+          correct_option?: number | null
+          id?: string
+          is_closed?: boolean
+          kind?: string
+          options?: Json
+          question?: string
+          started_at?: string
+          telegram_chat_id?: number
+          telegram_message_id?: number | null
+          telegram_poll_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
+      prompts: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          is_active: boolean
+          text: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          text: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          text?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +403,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
