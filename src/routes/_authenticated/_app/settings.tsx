@@ -24,21 +24,10 @@ function SettingsPage() {
   const { data: webhook, refetch } = useQuery({ queryKey: ["webhook"], queryFn: () => info() });
   const { data: botInfo } = useQuery({ queryKey: ["bot-info"], queryFn: () => bot() });
 
-  const LOVABLE_PROJECT_ID = "a4c96bd2-c11d-47a5-9aaa-f867b7072fa3";
   const [url, setUrl] = useState("");
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const host = window.location.host;
-      const path = "/api/public/telegram/webhook";
-      // If we're already on a stable project--<id> host or localhost, use current origin.
-      // Otherwise (custom domain like beshemyek.lovable.app, or id-preview--… which
-      // redirects through auth), use the stable dev host built from the project id.
-      const isStableHost = /^project--[a-f0-9-]+(-dev)?\./.test(host) || host.startsWith("localhost");
-      if (isStableHost) {
-        setUrl(`${window.location.origin}${path}`);
-      } else {
-        setUrl(`https://project--${LOVABLE_PROJECT_ID}-dev.lovable.app${path}`);
-      }
+      setUrl(`${window.location.origin}/api/public/telegram/webhook`);
     }
   }, []);
 

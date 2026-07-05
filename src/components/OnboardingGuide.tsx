@@ -60,8 +60,8 @@ const T = {
       ),
     },
     connector: {
-      title: "2. Подключить Telegram-коннектор",
-      desc: "Вставьте токен бота в Lovable, чтобы приложение могло вызывать Telegram API.",
+      title: "2. Настроить токен бота",
+      desc: "Добавьте TELEGRAM_API_KEY в секреты Cloudflare Worker (или .dev.vars локально).",
     },
     webhook: {
       title: "3. Установить webhook",
@@ -142,11 +142,7 @@ export function OnboardingGuide() {
 
   const webhookUrl = useMemo(() => {
     if (typeof window === "undefined") return "";
-    const host = window.location.host;
-    const stable = host
-      .replace(/^id-preview--/, "project--")
-      .replace(/\.lovable\.app$/, "-dev.lovable.app");
-    return `https://${stable}/api/public/telegram/webhook`;
+    return `${window.location.origin}/api/public/telegram/webhook`;
   }, []);
 
   const setHookMut = useMutation({
@@ -224,18 +220,19 @@ export function OnboardingGuide() {
             desc={T.steps.connector.desc}
           >
             <p className="text-sm text-muted-foreground mb-3">
-              Откройте Connectors в Lovable, найдите <strong>Telegram</strong>, нажмите Connect и вставьте
-              токен от BotFather.
+              Добавьте переменную <code className="px-1 py-0.5 rounded bg-muted">TELEGRAM_API_KEY</code> с
+              токеном от BotFather в секреты Cloudflare Worker. Локально — в файл{" "}
+              <code className="px-1 py-0.5 rounded bg-muted">.dev.vars</code>.
             </p>
             {connectorLinked ? (
               <div className="flex items-center gap-2 text-sm">
                 <CheckCircle2 className="w-4 h-4 text-green-500" />
-                Коннектор подключён, бот: <strong>@{botUsername}</strong>
+                Токен настроен, бот: <strong>@{botUsername}</strong>
               </div>
             ) : (
               <div className="space-y-2">
                 <p className="text-sm text-destructive">
-                  Коннектор пока не подключён или токен невалиден.
+                  Токен не настроен или невалиден — проверьте TELEGRAM_API_KEY.
                 </p>
                 <Button size="sm" variant="outline" onClick={() => botQ.refetch()}>
                   Проверить снова
@@ -302,7 +299,7 @@ export function OnboardingGuide() {
                     <Copy className="w-3 h-3 mr-1" />@{botUsername}
                   </Button>
                 ) : (
-                  <span className="ml-1 text-destructive">сначала подключите коннектор</span>
+                  <span className="ml-1 text-destructive">сначала настройте TELEGRAM_API_KEY</span>
                 )}
               </li>
               <li>

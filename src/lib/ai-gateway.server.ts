@@ -1,12 +1,17 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
-export function createLovableAiGatewayProvider(lovableApiKey: string) {
+export const DEEPSEEK_DEFAULT_MODEL = "deepseek-v4-flash";
+
+export function getDeepSeekModel(): string {
+  return process.env.DEEPSEEK_MODEL ?? DEEPSEEK_DEFAULT_MODEL;
+}
+
+export function createDeepSeekProvider(apiKey: string) {
   return createOpenAICompatible({
-    name: "lovable",
-    baseURL: "https://ai.gateway.lovable.dev/v1",
+    name: "deepseek",
+    baseURL: "https://api.deepseek.com/v1",
     headers: {
-      "Lovable-API-Key": lovableApiKey,
-      "X-Lovable-AIG-SDK": "vercel-ai-sdk",
+      Authorization: `Bearer ${apiKey}`,
     },
   });
 }

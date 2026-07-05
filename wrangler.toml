@@ -1,0 +1,21 @@
+name = "beshemyek-bot"
+compatibility_date = "2026-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# `main` and `[assets]` are computed by Nitro's cloudflare-module preset at
+# build time (see .output/server/wrangler.json after `npm run build`) — don't
+# set them here, Nitro will warn and ignore any value you put in this file.
+
+# Runs the scheduled icebreaker/prompt tick. Requires wiring a `scheduled()`
+# export in src/server.ts that calls the /api/public/hooks/prompt-tick logic.
+# [triggers]
+# crons = ["0 * * * *"]
+
+# Non-secret vars can go here; secrets (SUPABASE_SERVICE_ROLE_KEY, DEEPSEEK_API_KEY,
+# TELEGRAM_API_KEY) must be set with `wrangler secret put <NAME>` instead.
+[vars]
+SUPABASE_URL = "https://hyvfwkfrnfzdnisaqfpp.supabase.co"
+SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh5dmZ3a2ZybmZ6ZG5pc2FxZnBwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyMDI5ODIsImV4cCI6MjA5ODc3ODk4Mn0.s0_3GBI7lR9nAUhqBwp9Lq1awdrJZnMwVuCviNQ4UPc"
+VITE_SUPABASE_URL = "https://hyvfwkfrnfzdnisaqfpp.supabase.co"
+VITE_SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh5dmZ3a2ZybmZ6ZG5pc2FxZnBwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyMDI5ODIsImV4cCI6MjA5ODc3ODk4Mn0.s0_3GBI7lR9nAUhqBwp9Lq1awdrJZnMwVuCviNQ4UPc"
+DEEPSEEK_MODEL = "deepseek-v4-flash"

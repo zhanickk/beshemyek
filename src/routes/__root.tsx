@@ -10,7 +10,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
+import { reportClientError } from "../lib/error-reporting";
 
 function NotFoundComponent() {
   return (
@@ -38,7 +38,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    reportClientError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
   return (
@@ -79,16 +79,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Бешемьек Братан" },
       { name: "description", content: "твой душевный братан" },
-      { name: "author", content: "Lovable" },
       { property: "og:title", content: "Бешемьек Братан" },
       { property: "og:description", content: "твой душевный братан" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "Бешемьек Братан" },
       { name: "twitter:description", content: "твой душевный братан" },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/bd5d9285-519c-4cfb-86c0-9e9002396355/id-preview-1dc9e599--a4c96bd2-c11d-47a5-9aaa-f867b7072fa3.lovable.app-1782325758477.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/bd5d9285-519c-4cfb-86c0-9e9002396355/id-preview-1dc9e599--a4c96bd2-c11d-47a5-9aaa-f867b7072fa3.lovable.app-1782325758477.png" },
     ],
     links: [
       {

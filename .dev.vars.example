@@ -1,0 +1,12 @@
+# Copy to .dev.vars for local `vite dev` / `wrangler dev` runs.
+# In production these are set with: wrangler secret put <NAME>
+
+# Telegram bot token from @BotFather
+TELEGRAM_API_KEY=
+
+# DeepSeek API key from https://platform.deepseek.com
+DEEPSEEK_API_KEY=
+DEEPSEEK_MODEL=deepseek-v4-flash
+
+# Supabase service role key (Project Settings -> API -> service_role)
+SUPABASE_SERVICE_ROLE_KEY=

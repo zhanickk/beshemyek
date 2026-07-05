@@ -48,24 +48,18 @@ export const T = {
   aiFallback: { ru: "Я тут, бро. Чё по делу?", en: "I'm here, bro. What's up?" },
 };
 
-const GATEWAY_URL = "https://connector-gateway.lovable.dev/telegram";
-
-function authHeaders() {
-  const lovableKey = process.env.LOVABLE_API_KEY;
+function getBotToken(): string {
   const tgKey = process.env.TELEGRAM_API_KEY;
-  if (!lovableKey) throw new Error("LOVABLE_API_KEY is not configured");
   if (!tgKey) throw new Error("TELEGRAM_API_KEY is not configured");
-  return {
-    Authorization: `Bearer ${lovableKey}`,
-    "X-Connection-Api-Key": tgKey,
-    "Content-Type": "application/json",
-  };
+  return tgKey;
+}
+
+function telegramApiUrl(method: string): string {
+  return `https://api.telegram.org/bot${getBotToken()}/${method}`;
 }
 
 export function deriveTelegramWebhookSecret(): string {
-  const tgKey = process.env.TELEGRAM_API_KEY;
-  if (!tgKey) throw new Error("TELEGRAM_API_KEY is not configured");
-  return createHash("sha256").update(`telegram-webhook:${tgKey}`).digest("base64url");
+  return createHash("sha256").update(`telegram-webhook:${getBotToken()}`).digest("base64url");
 }
 
 export function verifyTelegramSecret(headerValue: string | null): boolean {
@@ -77,9 +71,9 @@ export function verifyTelegramSecret(headerValue: string | null): boolean {
 }
 
 export async function tgCall<T = any>(endpoint: string, body: Record<string, unknown>): Promise<T> {
-  const res = await fetch(`${GATEWAY_URL}/${endpoint}`, {
+  const res = await fetch(telegramApiUrl(endpoint), {
     method: "POST",
-    headers: authHeaders(),
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
