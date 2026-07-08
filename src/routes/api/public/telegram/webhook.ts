@@ -81,6 +81,7 @@ import {
 import { detectGameIntent, type NaturalGameKey, type GameIntent } from "@/lib/games/intent.server";
 import { generateExcuse } from "@/lib/games/excuse.server";
 import { generateRoast } from "@/lib/games/roast.server";
+import { maybeHarvestQuotesInBackground } from "@/lib/games/quote-bank.server";
 import {
   beginTumbaDialog,
   handleTumbaCategoryChoice,
@@ -2027,6 +2028,11 @@ async function handleGroupMessage(admin: ReturnType<typeof getAdmin>, message: T
 
   // Organic chime-in when chat is lively but bot wasn't mentioned.
   if (text && message.from && !message.from.is_bot && settings) {
+    if (!text.startsWith("/") && (await isFeatureEnabled(admin, chatRow.id, "who_said_this"))) {
+      maybeHarvestQuotesInBackground(admin, chatRow.id, chatId).catch((e) =>
+        console.error("background quote harvest failed", e),
+      );
+    }
     await tryOrganicChimeIn(admin, chatRow.id, chatId, {
       id: settings.id,
       last_bot_message_at: settings.last_bot_message_at,

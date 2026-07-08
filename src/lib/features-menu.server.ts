@@ -65,7 +65,7 @@ const GAME_EXTRA: Partial<Record<FeatureKey, Partial<FeatureMenuItem>>> = {
     launchable: false,
   },
   who_said_this: {
-    desc: "Угадай автора цитаты. /cringe на сообщение кладёт в базу; бот ещё сам выцепляет угар из чата.",
+    desc: "Угадай автора цитаты. Бот сам выцепляет угар из последних ~800 сообщений; /cringe — вручную.",
     how: "/who_said",
     launchable: true,
   },
