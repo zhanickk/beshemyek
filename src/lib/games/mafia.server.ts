@@ -33,7 +33,7 @@ const DAY_VOTE_MS = 60 * 1000;
 const RUNOFF_MS = 30 * 1000;
 const KAMIKAZE_MS = 20 * 1000;
 const MIN_PLAYERS = 6;
-const MAX_PLAYERS = 12;
+const MAX_PLAYERS = 16;
 
 const WIN_REWARD = 25;
 const SURVIVOR_BONUS = 10;
@@ -99,7 +99,7 @@ function renderLobby(players: MafiaPlayer[]): string {
   const status =
     players.length >= MIN_PLAYERS
       ? "Игроков достаточно — можно начинать!"
-      : `Нужно ещё минимум ${need} (роли: Дон, Мафия, Комиссар, Доктор, Камикадзе…).`;
+      : `Нужно ещё минимум ${need} (роли зависят от числа игроков: от 6 — Комиссар/Доктор/Мафия, с 9 — Маньяк, с 11 — Камикадзе).`;
   return `🔪 <b>Мафия — сбор игроков</b>\n\n<b>В игре (${players.length}/${MAX_PLAYERS}):</b>\n${list}\n\n${status}\nЖми «✅ Я в игре».`;
 }
 

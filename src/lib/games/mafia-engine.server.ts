@@ -285,20 +285,74 @@ export function checkWin(players: MafiaPlayer[]): WinResult {
   return { winner: null };
 }
 
-/** Role distribution by player count (6–12). */
+/** Role distribution by player count (see product spec). */
 export function assignMafiaRoles(count: number): MafiaRole[] {
-  const base: MafiaRole[] = ["don", "mafia", "commissar", "doctor", "kamikaze", "citizen"];
-  if (count <= 6) return base.slice(0, count);
-  const extra: MafiaRole[] = [];
-  if (count >= 7) extra.push("putana");
-  if (count >= 8) extra.push("bodyguard");
-  if (count >= 9) extra.push("maniac");
-  if (count >= 10) extra.push("citizen");
-  if (count >= 11) extra.push("mafia");
-  if (count >= 12) extra.push("citizen");
-  const roles = [...base, ...extra];
-  while (roles.length < count) roles.push("citizen");
-  return roles.slice(0, count);
+  if (count < 6) {
+    throw new Error(`Mafia needs at least 6 players, got ${count}`);
+  }
+
+  const roles: MafiaRole[] = [];
+
+  const addMafia = (n: number) => {
+    if (n <= 0) return;
+    roles.push("don");
+    for (let i = 1; i < n; i++) roles.push("mafia");
+  };
+
+  if (count === 6) {
+    // Город 4: Комиссар, Доктор, 2 Мирных | Мафия 2
+    roles.push("commissar", "doctor", "citizen", "citizen");
+    addMafia(2);
+  } else if (count === 7) {
+    // Между 6 и 8: без Путаны, +1 мирный
+    roles.push("commissar", "doctor", "citizen", "citizen", "citizen");
+    addMafia(2);
+  } else if (count === 8) {
+    // Город 6: Комиссар, Доктор, Путана, 3 Мирных | Мафия 2
+    roles.push("commissar", "doctor", "putana", "citizen", "citizen", "citizen");
+    addMafia(2);
+  } else if (count === 9) {
+    // Город 5 + Маньяк: 1 Мирный | Мафия 3
+    roles.push("commissar", "doctor", "putana", "bodyguard", "citizen");
+    addMafia(3);
+    roles.push("maniac");
+  } else if (count === 10) {
+    // Город 6 + Маньяк: 2 Мирных | Мафия 3
+    roles.push("commissar", "doctor", "putana", "bodyguard", "citizen", "citizen");
+    addMafia(3);
+    roles.push("maniac");
+  } else if (count === 11) {
+    // Город 7 + Маньяк: Камикадзе, 2 Мирных | Мафия 3
+    roles.push("commissar", "doctor", "putana", "bodyguard", "kamikaze", "citizen", "citizen");
+    addMafia(3);
+    roles.push("maniac");
+  } else if (count === 12) {
+    // Город 8 + Маньяк: Камикадзе, 3 Мирных | Мафия 3
+    roles.push(
+      "commissar",
+      "doctor",
+      "putana",
+      "bodyguard",
+      "kamikaze",
+      "citizen",
+      "citizen",
+      "citizen",
+    );
+    addMafia(3);
+    roles.push("maniac");
+  } else {
+    // 13+: Город 5 слотов + (count-10) мирных | Мафия 4 | Маньяк
+    const citizens = count - 10;
+    roles.push("commissar", "doctor", "putana", "bodyguard", "kamikaze");
+    for (let i = 0; i < citizens; i++) roles.push("citizen");
+    addMafia(4);
+    roles.push("maniac");
+  }
+
+  if (roles.length !== count) {
+    throw new Error(`assignMafiaRoles mismatch: expected ${count}, got ${roles.length}`);
+  }
+  return roles;
 }
 
 export function shuffleRoles(players: { id: number; name: string; alive: boolean }[]): MafiaPlayer[] {

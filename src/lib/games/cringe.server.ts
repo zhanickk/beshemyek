@@ -10,6 +10,7 @@ import {
   type GameCtx,
   type GameSession,
 } from "./engine.server";
+import { ensureQuoteBank, fetchQuoteEntry } from "./quote-bank.server";
 
 const ROUND_MS = 2 * 60 * 1000;
 
@@ -38,42 +39,19 @@ export async function startCringeGame(ctx: GameCtx, mode: CringeMode) {
   const existing = await getActiveSession(ctx.admin, ctx.chatId);
   if (existing) return { alreadyActive: true as const };
 
-  let { data: entries } = await ctx.admin
-    .from("cringe_entries")
-    .select("*")
-    .eq("chat_id", ctx.chatId)
-    .eq("is_active", true)
-    .eq("is_used", false);
-
-  if (!entries || entries.length === 0) {
-    await ctx.admin
-      .from("cringe_entries")
-      .update({ is_used: false })
-      .eq("chat_id", ctx.chatId)
-      .eq("is_active", true);
-    const retry = await ctx.admin
-      .from("cringe_entries")
-      .select("*")
-      .eq("chat_id", ctx.chatId)
-      .eq("is_active", true);
-    entries = retry.data ?? [];
-  }
-  if (!entries || entries.length === 0) return { noEntries: true as const };
-
-  const entry = entries[Math.floor(Math.random() * entries.length)];
-  await ctx.admin
-    .from("cringe_entries")
-    .update({ is_used: true, used_at: new Date().toISOString() })
-    .eq("id", entry.id);
+  await ensureQuoteBank(ctx.admin, ctx.chatId, ctx.telegramChatId, mode);
+  const entry = await fetchQuoteEntry(ctx.admin, ctx.chatId, mode);
+  if (!entry) return { noEntries: true as const };
 
   const { data: members } = await ctx.admin
     .from("chat_members")
     .select("telegram_user_id, username, display_name")
     .eq("chat_id", ctx.chatId)
-    .limit(30);
+    .limit(40);
 
   const pool = (members ?? []).filter((m) => m.telegram_user_id !== entry.telegram_user_id);
-  const distractors = pool.sort(() => Math.random() - 0.5).slice(0, 3);
+  const distractorCount = Math.min(3, pool.length);
+  const distractors = pool.sort(() => Math.random() - 0.5).slice(0, distractorCount);
   const subjectMember = (members ?? []).find(
     (m) => m.telegram_user_id === entry.telegram_user_id,
   ) ?? {
@@ -104,7 +82,7 @@ export async function startCringeGame(ctx: GameCtx, mode: CringeMode) {
 
   const rows = candidates.map((c) => [
     {
-      text: truncateBtn(memberName(c)),
+      text: truncateBtn(`👤 ${memberName(c)}`),
       callback_data: packCallback(session.short_code, "vote", String(c.telegram_user_id)),
     },
   ]);

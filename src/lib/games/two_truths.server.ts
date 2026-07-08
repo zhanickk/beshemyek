@@ -115,11 +115,11 @@ export async function finalizeTwoTruths(
   ]);
   await telegram.sendMessage(
     chatRow.telegram_chat_id,
-    `🎭 <b>Два правды и одна ложь</b>\nАнонимный участник прислал 3 факта. Угадайте, какой — ложь!\n\n${facts.map((f, i) => `${LETTERS[i]}. ${f}`).join("\n")}\n\nУ вас ${ROUND_MS / 60000} минут.`,
+    `🎭 <b>Два правды и одна ложь</b>\n<b>${submitterName}</b> прислал(а) 3 факта. Угадайте, какой — ложь!\n\n${facts.map((f, i) => `${LETTERS[i]}. ${f}`).join("\n")}\n\nУ вас ${ROUND_MS / 60000} минут.`,
     { reply_markup: inlineKeyboard(rows) },
   );
   await admin.from("bot_dialogs").delete().eq("telegram_user_id", dialog.telegram_user_id);
-  await telegram.sendMessage(dialog.telegram_user_id, "Опубликовал в чате анонимно! 🤫");
+  await telegram.sendMessage(dialog.telegram_user_id, "Опубликовал в чате! ✅");
 }
 
 export async function handleTwoTruthsCallback(
@@ -163,6 +163,8 @@ export async function tickTwoTruths(ctx: GameCtx, session: GameSession) {
   await finishSession(ctx.admin, session.id, session.state);
   await telegram.sendMessage(
     ctx.telegramChatId,
-    `Ложью был вариант <b>${LETTERS[Number(lieIndex)]}</b>: «${session.state.facts[Number(lieIndex)]}»\n${winners.length > 0 ? `Угадали: ${winners.length} чел. (+10 БешКоинов)` : "Никто не угадал!"}`,
+    `Ложью был вариант <b>${LETTERS[Number(lieIndex)]}</b>: «${session.state.facts[Number(lieIndex)]}»\n` +
+      `Автор: <b>${session.state.submitterName ?? "участник"}</b>\n` +
+      `${winners.length > 0 ? `Угадали: ${winners.length} чел. (+10 БешКоинов)` : "Никто не угадал!"}`,
   );
 }

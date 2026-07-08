@@ -348,11 +348,15 @@ async function launchFeatureFromMenu(
       const r = await startTruthOrDare(ctx, invoker);
       return (r as any).alreadyActive ? activeMsg : null;
     }
+    case "taboo": {
+      const r = await startTaboo(ctx, invoker);
+      return (r as any).alreadyActive ? activeMsg : null;
+    }
     case "who_said_this": {
       const r = await startCringeGame(ctx, "who_said");
       if ((r as any).alreadyActive) return activeMsg;
       if ((r as any).noEntries)
-        return "База цитат пуста — накидайте через /cringe в ответ на сообщение.";
+        return "Мало цитат — отметь угар через /cringe в ответ на сообщение, или подожди пока бот наберёт из чата.";
       return null;
     }
     case "aiesec_quiz": {
@@ -772,7 +776,7 @@ async function startNaturalGame(
       const r = await startCringeGame(ctx, "who_said");
       if ((r as any).alreadyActive) return "Уже идёт другая игра, закончите её сначала (/endgame).";
       if ((r as any).noEntries)
-        return "База цитат пуста — накидайте через /cringe в ответ на сообщение.";
+        return "Мало цитат — отметь угар через /cringe в ответ на сообщение, или подожди пока бот наберёт из чата.";
       return null;
     }
     case "aiesec_quiz": {
@@ -1559,8 +1563,12 @@ async function handleGroupMessage(admin: ReturnType<typeof getAdmin>, message: T
         telegram_user_id: message.reply_to_message.from.id,
         source_message_id: message.reply_to_message.message_id,
         added_by_user_id: message.from!.id,
+        pool: "shared",
       });
-      await telegram.sendMessage(chatId, "Занесено в базу кринжа 📼");
+      await telegram.sendMessage(
+        chatId,
+        "Занесено в базу цитат 📼 (пойдёт в «Кто это сказал» и кринж-игру).",
+      );
       return;
     }
     if (
@@ -1590,7 +1598,7 @@ async function handleGroupMessage(admin: ReturnType<typeof getAdmin>, message: T
       if ((r as any).noEntries)
         await telegram.sendMessage(
           chatId,
-          "База цитат пуста — накидайте через /cringe в ответ на сообщение.",
+          "Мало цитат — отметь угар через /cringe в ответ на сообщение, или подожди пока бот наберёт из чата.",
         );
       return;
     }

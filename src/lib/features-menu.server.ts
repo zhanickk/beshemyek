@@ -64,6 +64,11 @@ const GAME_EXTRA: Partial<Record<FeatureKey, Partial<FeatureMenuItem>>> = {
     desc: "Угадай, кто написал кринж — ответь /cringe на сообщение.",
     launchable: false,
   },
+  who_said_this: {
+    desc: "Угадай автора цитаты. /cringe на сообщение кладёт в базу; бот ещё сам выцепляет угар из чата.",
+    how: "/who_said",
+    launchable: true,
+  },
   totalizator: {
     desc: "Ставки на исход — нужен вопрос и варианты.",
     how: "/bet Вопрос | Вариант1 | Вариант2",
@@ -88,11 +93,12 @@ function gameItem(key: FeatureKey): FeatureMenuItem {
   };
 }
 
-/** Items per category (taboo omitted from menu — feature exists but hidden). */
+/** Items per category. */
 export const MENU_BY_CATEGORY: Record<FeatureCategory, FeatureMenuItem[]> = {
   games: [
     "mafia",
     "crocodile",
+    "taboo",
     "truth_or_dare",
     "cringe",
     "who_said_this",
@@ -173,9 +179,9 @@ export function findMenuItem(
 
 export function buildFeaturesRootKeyboard() {
   return inlineKeyboard([
-    [{ text: "Игры", callback_data: "feat:games" }],
-    [{ text: "Экономика", callback_data: "feat:economy" }],
-    [{ text: "Социальное", callback_data: "feat:social" }],
+    [{ text: "🎮 Игры", callback_data: "feat:games" }],
+    [{ text: "🪙 Экономика", callback_data: "feat:economy" }],
+    [{ text: "🍬 Социальное", callback_data: "feat:social" }],
   ]);
 }
 
@@ -216,7 +222,7 @@ export function buildFeaturesCategoryKeyboard(
     const on = map[item.featureKey];
     return [{ text: formatMenuBtnLabel(item.label, on), callback_data: `feat:${category}:${item.id}` }];
   });
-  rows.push([{ text: "← Назад", callback_data: "feat:back" }]);
+  rows.push([{ text: "⬅️ Назад", callback_data: "feat:back" }]);
   return inlineKeyboard(rows);
 }
 
@@ -244,8 +250,8 @@ export function buildFeaturesItemKeyboard(
 ) {
   const rows: Array<Array<{ text: string; callback_data: string }>> = [];
   if (item.launchable && map[item.featureKey]) {
-    rows.push([{ text: "Запустить", callback_data: `feat:run:${item.id}` }]);
+    rows.push([{ text: "▶️ Запустить", callback_data: `feat:run:${item.id}` }]);
   }
-  rows.push([{ text: "← Назад", callback_data: `feat:back:${category}` }]);
+  rows.push([{ text: "⬅️ Назад", callback_data: `feat:back:${category}` }]);
   return inlineKeyboard(rows);
 }
