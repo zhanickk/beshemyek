@@ -3,7 +3,7 @@ import { truncateBtn } from "@/lib/keyboards.server";
 import {
   createSession,
   finishSession,
-  getActiveSession,
+  getBlockingSession,
   packCallback,
   type GameCtx,
   type GameSession,
@@ -39,7 +39,7 @@ async function sendQuestion(ctx: GameCtx, session: GameSession) {
 }
 
 export async function startArchetypeQuiz(ctx: GameCtx, invoker: { id: number; name: string }) {
-  const existing = await getActiveSession(ctx.admin, ctx.chatId);
+  const existing = await getBlockingSession(ctx.admin, ctx.chatId, "archetype_quiz");
   if (existing) return { alreadyActive: true as const };
   const { data: pool } = await ctx.admin
     .from("quiz_questions")

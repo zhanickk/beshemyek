@@ -2,7 +2,7 @@ import { telegram, inlineKeyboard, buildDeepLink } from "@/lib/telegram.server";
 import { awardCoins } from "@/lib/economy.server";
 import {
   createSession,
-  getActiveSession,
+  getBlockingSession,
   finishSession,
   updateSessionState,
   packCallback,
@@ -14,7 +14,7 @@ import { randomCrocodileWord, containsWord } from "./words";
 const ROUND_MS = 3 * 60 * 1000;
 
 export async function startCrocodile(ctx: GameCtx, invoker: { id: number; name: string }) {
-  const existing = await getActiveSession(ctx.admin, ctx.chatId);
+  const existing = await getBlockingSession(ctx.admin, ctx.chatId, "crocodile");
   if (existing) return { alreadyActive: true as const };
 
   const { word, category } = randomCrocodileWord();

@@ -4,7 +4,7 @@ import { truncateBtn } from "@/lib/keyboards.server";
 import { awardCoins, spendCoins } from "@/lib/economy.server";
 import {
   createSession,
-  getActiveSession,
+  getBlockingSession,
   packCallback,
   updateSessionState,
   finishSession,
@@ -124,7 +124,7 @@ async function refreshLobby(ctx: GameCtx, session: GameSession, state: MafiaStat
 }
 
 export async function startMafiaLobby(ctx: GameCtx, invoker: { id: number; name: string }) {
-  const existing = await getActiveSession(ctx.admin, ctx.chatId);
+  const existing = await getBlockingSession(ctx.admin, ctx.chatId, "mafia");
   if (existing) return { alreadyActive: true as const };
 
   const players: MafiaPlayer[] = [

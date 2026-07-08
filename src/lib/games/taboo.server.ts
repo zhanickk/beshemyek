@@ -4,7 +4,7 @@ import { truncateBtn } from "@/lib/keyboards.server";
 import { awardCoins } from "@/lib/economy.server";
 import {
   createSession,
-  getActiveSession,
+  getBlockingSession,
   packCallback,
   updateSessionState,
   finishSession,
@@ -430,7 +430,7 @@ async function finishGame(ctx: GameCtx, session: GameSession, state: TabooState)
 // ── public API ───────────────────────────────────────────────────────────
 
 export async function startTaboo(ctx: GameCtx, invoker: { id: number; name: string }) {
-  const existing = await getActiveSession(ctx.admin, ctx.chatId);
+  const existing = await getBlockingSession(ctx.admin, ctx.chatId, "taboo");
   if (existing) return { alreadyActive: true as const };
 
   const players: TabooPlayer[] = [

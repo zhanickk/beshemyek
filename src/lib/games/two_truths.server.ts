@@ -4,7 +4,7 @@ import { truncateBtn } from "@/lib/keyboards.server";
 import { awardCoins } from "@/lib/economy.server";
 import {
   createSession,
-  getActiveSession,
+  getBlockingSession,
   finishSession,
   packCallback,
   type GameCtx,
@@ -82,7 +82,7 @@ export async function finalizeTwoTruths(
     await admin.from("bot_dialogs").delete().eq("telegram_user_id", dialog.telegram_user_id);
     return;
   }
-  const existing = await getActiveSession(admin, chatId);
+  const existing = await getBlockingSession(admin, chatId, "two_truths");
   if (existing) {
     await admin.from("bot_dialogs").delete().eq("telegram_user_id", dialog.telegram_user_id);
     await telegram.sendMessage(

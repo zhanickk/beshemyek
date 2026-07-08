@@ -3,7 +3,7 @@ import { awardCoins, spendCoins } from "@/lib/economy.server";
 import { truncateBtn } from "@/lib/keyboards.server";
 import {
   createSession,
-  getActiveSession,
+  getBlockingSession,
   finishSession,
   updateSessionState,
   packCallback,
@@ -40,7 +40,7 @@ export async function startTotalizator(
   options: string[],
   creatorId?: number,
 ) {
-  const existing = await getActiveSession(ctx.admin, ctx.chatId);
+  const existing = await getBlockingSession(ctx.admin, ctx.chatId, "totalizator");
   if (existing) return { alreadyActive: true as const };
 
   const session = await createSession(

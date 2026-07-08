@@ -4,7 +4,7 @@ import { telegram, inlineKeyboard } from "@/lib/telegram.server";
 import { awardCoins, pickRandomMembers } from "@/lib/economy.server";
 import {
   createSession,
-  getActiveSession,
+  getBlockingSession,
   finishSession,
   updateSessionState,
   packCallback,
@@ -74,7 +74,7 @@ async function generateDuelContent(
 }
 
 export async function startExcuseDuel(ctx: GameCtx) {
-  const existing = await getActiveSession(ctx.admin, ctx.chatId);
+  const existing = await getBlockingSession(ctx.admin, ctx.chatId, "excuse_duel");
   if (existing) return { alreadyActive: true as const };
 
   const members = await pickRandomMembers(ctx.admin, ctx.chatId, 6);

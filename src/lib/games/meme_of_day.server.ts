@@ -2,7 +2,7 @@ import { telegram, inlineKeyboard } from "@/lib/telegram.server";
 import { awardCoins } from "@/lib/economy.server";
 import {
   createSession,
-  getActiveSession,
+  getBlockingSession,
   finishSession,
   updateSessionState,
   packCallback,
@@ -15,7 +15,7 @@ const ROUND_MS = 6 * 3600 * 1000;
 type MemeEntry = { messageId: number; userId: number; userName: string; votes: number };
 
 export async function startMemeOfDay(ctx: GameCtx) {
-  const existing = await getActiveSession(ctx.admin, ctx.chatId);
+  const existing = await getBlockingSession(ctx.admin, ctx.chatId, "meme_of_day");
   if (existing) return { alreadyActive: true as const };
   const session = await createSession(
     ctx.admin,

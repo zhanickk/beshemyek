@@ -2,7 +2,7 @@ import { telegram, inlineKeyboard } from "@/lib/telegram.server";
 import { awardCoins } from "@/lib/economy.server";
 import {
   createSession,
-  getActiveSession,
+  getBlockingSession,
   finishSession,
   updateSessionState,
   packCallback,
@@ -57,7 +57,7 @@ async function loadQuestions(ctx: GameCtx): Promise<DuelQuestion[]> {
 }
 
 export async function startQuizDuel(ctx: GameCtx, challenger: { id: number; name: string }) {
-  const existing = await getActiveSession(ctx.admin, ctx.chatId);
+  const existing = await getBlockingSession(ctx.admin, ctx.chatId, "quiz_duel");
   if (existing) return { alreadyActive: true as const };
 
   const questions = await loadQuestions(ctx);

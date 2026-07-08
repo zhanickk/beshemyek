@@ -31,11 +31,15 @@ import { pickSticker } from "@/lib/stickers.server";
 import { handlePollAnswer } from "@/lib/quiz.server";
 import {
   getActiveSession,
+  getActiveSessions,
+  getBlockingSession,
+  allowConcurrentGames,
   getSessionByShortCode,
   parseCallback,
   cancelSession,
   GAME_LABELS,
   type GameCtx,
+  type GameType,
 } from "@/lib/games/engine.server";
 import {
   startCrocodile,
@@ -81,7 +85,6 @@ import {
 import { detectGameIntent, type NaturalGameKey, type GameIntent } from "@/lib/games/intent.server";
 import { generateExcuse } from "@/lib/games/excuse.server";
 import { generateRoast } from "@/lib/games/roast.server";
-import { maybeHarvestQuotesInBackground } from "@/lib/games/quote-bank.server";
 import {
   beginTumbaDialog,
   handleTumbaCategoryChoice,
@@ -664,6 +667,22 @@ const NATURAL_CODE_TO_GAME: Record<string, NaturalGameKey> = Object.fromEntries(
   Object.entries(NATURAL_GAME_CODE).map(([k, v]) => [v, k as NaturalGameKey]),
 ) as Record<string, NaturalGameKey>;
 
+const NATURAL_GAME_SESSION_TYPE: Record<NaturalGameKey, GameType> = {
+  crocodile: "crocodile",
+  taboo: "taboo",
+  truth_or_dare: "truth_or_dare",
+  mafia: "mafia",
+  cringe: "cringe",
+  who_said: "cringe",
+  aiesec_quiz: "aiesec_quiz",
+  two_truths: "two_truths",
+  meme_of_day: "meme_of_day",
+  archetype_quiz: "archetype_quiz",
+  red_button: "red_button",
+  excuse_duel: "excuse_duel",
+  quiz_duel: "quiz_duel",
+};
+
 const NATURAL_GAME_FEATURE_KEY: Record<NaturalGameKey, FeatureKey> = {
   crocodile: "crocodile",
   taboo: "taboo",
@@ -718,7 +737,11 @@ async function handleGameIntent(
     await telegram.sendMessage(chatId, "Эта игра сейчас выключена в этом чате, сорян.");
     return;
   }
-  const existingActive = await getActiveSession(admin, chatRow.id);
+  const existingActive = await getBlockingSession(
+    admin,
+    chatRow.id,
+    NATURAL_GAME_SESSION_TYPE[intent.game],
+  );
   if (existingActive) {
     await telegram.sendMessage(
       chatId,
@@ -1388,15 +1411,20 @@ async function handleGroupMessage(admin: ReturnType<typeof getAdmin>, message: T
   const ctx: GameCtx = { admin, chatId: chatRow.id, telegramChatId: chatId, lang };
   const botUsername = await import("@/lib/telegram.server").then((m) => m.getBotUsername());
 
-  // Active game consumes plain (non-command) messages before anything else.
-  const activeGame = await getActiveSession(admin, chatRow.id);
-  if (activeGame && !text.startsWith("/")) {
-    if (activeGame.type === "crocodile") {
-      if (await handleCrocodileMessage(ctx, activeGame, message)) return;
-    } else if (activeGame.type === "taboo") {
-      if (await handleTabooMessage(ctx, activeGame, message)) return;
-    } else if (activeGame.type === "meme_of_day") {
-      if (await handleMemeMessage(ctx, activeGame, message as any, fromName)) return;
+  // Active game(s) consume plain (non-command) messages before anything else.
+  const concurrent = await allowConcurrentGames(admin, chatRow.id);
+  let activeGames = await getActiveSessions(admin, chatRow.id);
+  if (!concurrent) activeGames = activeGames.slice(0, 1);
+
+  if (activeGames.length && !text.startsWith("/")) {
+    for (const activeGame of activeGames) {
+      if (activeGame.type === "crocodile") {
+        if (await handleCrocodileMessage(ctx, activeGame, message)) return;
+      } else if (activeGame.type === "taboo") {
+        if (await handleTabooMessage(ctx, activeGame, message)) return;
+      } else if (activeGame.type === "meme_of_day") {
+        if (await handleMemeMessage(ctx, activeGame, message as any, fromName)) return;
+      }
     }
   }
 
@@ -2028,11 +2056,6 @@ async function handleGroupMessage(admin: ReturnType<typeof getAdmin>, message: T
 
   // Organic chime-in when chat is lively but bot wasn't mentioned.
   if (text && message.from && !message.from.is_bot && settings) {
-    if (!text.startsWith("/") && (await isFeatureEnabled(admin, chatRow.id, "who_said_this"))) {
-      maybeHarvestQuotesInBackground(admin, chatRow.id, chatId).catch((e) =>
-        console.error("background quote harvest failed", e),
-      );
-    }
     await tryOrganicChimeIn(admin, chatRow.id, chatId, {
       id: settings.id,
       last_bot_message_at: settings.last_bot_message_at,

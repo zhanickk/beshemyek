@@ -231,6 +231,21 @@ function ChatsPage() {
                   onCheckedChange={(v) => updateMut.mutate({ chat_id: chat.id, is_paused: v })}
                 />
               </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Несколько игр одновременно</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Разные мини-игры в одном чате параллельно (мафия + крокодил и т.д.). Одна и та же
+                    игра дважды — всё равно нельзя.
+                  </p>
+                </div>
+                <Switch
+                  checked={s.allow_concurrent_games ?? false}
+                  onCheckedChange={(v) =>
+                    updateMut.mutate({ chat_id: chat.id, allow_concurrent_games: v })
+                  }
+                />
+              </div>
               <div className="space-y-1">
                 <Label>Тишина до вброса (мин)</Label>
                 <Input

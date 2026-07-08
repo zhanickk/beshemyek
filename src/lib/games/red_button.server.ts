@@ -2,7 +2,7 @@ import { telegram, inlineKeyboard } from "@/lib/telegram.server";
 import { awardCoins, getBalance } from "@/lib/economy.server";
 import {
   createSession,
-  getActiveSession,
+  getBlockingSession,
   finishSession,
   packCallback,
   type GameCtx,
@@ -31,7 +31,7 @@ const DRAMA_LINES = [
 ];
 
 export async function startRedButton(ctx: GameCtx, invoker: { id: number; name: string }) {
-  const existing = await getActiveSession(ctx.admin, ctx.chatId);
+  const existing = await getBlockingSession(ctx.admin, ctx.chatId, "red_button");
   if (existing) return { alreadyActive: true as const };
 
   const reward = randInt(20, 60);

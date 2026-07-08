@@ -3,7 +3,7 @@ import { awardCoins } from "@/lib/economy.server";
 import { truncateBtn } from "@/lib/keyboards.server";
 import {
   createSession,
-  getActiveSession,
+  getBlockingSession,
   finishSession,
   updateSessionState,
   packCallback,
@@ -36,11 +36,11 @@ function memberName(m: {
 }
 
 export async function startCringeGame(ctx: GameCtx, mode: CringeMode) {
-  const existing = await getActiveSession(ctx.admin, ctx.chatId);
+  const existing = await getBlockingSession(ctx.admin, ctx.chatId, "cringe");
   if (existing) return { alreadyActive: true as const };
 
   await ensureQuoteBank(ctx.admin, ctx.chatId, ctx.telegramChatId, mode);
-  const entry = await fetchQuoteEntry(ctx.admin, ctx.chatId, mode);
+  const entry = await fetchQuoteEntry(ctx.admin, ctx.chatId, mode, ctx.telegramChatId);
   if (!entry) return { noEntries: true as const };
 
   const { data: members } = await ctx.admin

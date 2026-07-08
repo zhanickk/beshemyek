@@ -3,7 +3,7 @@ import { awardCoins } from "@/lib/economy.server";
 import { optionLetterButtons } from "@/lib/keyboards.server";
 import {
   createSession,
-  getActiveSession,
+  getBlockingSession,
   finishSession,
   packCallback,
   type GameCtx,
@@ -13,7 +13,7 @@ import {
 const ROUND_MS = 2 * 60 * 1000;
 
 export async function startAiesecQuiz(ctx: GameCtx) {
-  const existing = await getActiveSession(ctx.admin, ctx.chatId);
+  const existing = await getBlockingSession(ctx.admin, ctx.chatId, "aiesec_quiz");
   if (existing) return { alreadyActive: true as const };
 
   const { data: questions } = await ctx.admin

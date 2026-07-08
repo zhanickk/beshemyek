@@ -38,6 +38,7 @@ export type Database = {
       bot_settings: {
         Row: {
           ai_replies_enabled: boolean;
+          allow_concurrent_games: boolean;
           chat_id: string;
           id: string;
           ignored_pout_sent: boolean;
@@ -60,6 +61,7 @@ export type Database = {
         };
         Insert: {
           ai_replies_enabled?: boolean;
+          allow_concurrent_games?: boolean;
           chat_id: string;
           id?: string;
           ignored_pout_sent?: boolean;
@@ -82,6 +84,7 @@ export type Database = {
         };
         Update: {
           ai_replies_enabled?: boolean;
+          allow_concurrent_games?: boolean;
           chat_id?: string;
           id?: string;
           ignored_pout_sent?: boolean;

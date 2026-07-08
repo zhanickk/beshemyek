@@ -118,6 +118,43 @@ export async function getActiveSession(
   return (data as GameSession | null) ?? null;
 }
 
+export async function getActiveSessions(
+  admin: SupabaseClient,
+  chatId: string,
+): Promise<GameSession[]> {
+  const { data } = await admin
+    .from("game_sessions")
+    .select("*")
+    .eq("chat_id", chatId)
+    .in("status", ["waiting", "active"])
+    .order("created_at", { ascending: false });
+  return (data as GameSession[]) ?? [];
+}
+
+export async function allowConcurrentGames(
+  admin: SupabaseClient,
+  chatId: string,
+): Promise<boolean> {
+  const { data } = await admin
+    .from("bot_settings")
+    .select("allow_concurrent_games")
+    .eq("chat_id", chatId)
+    .maybeSingle();
+  return data?.allow_concurrent_games ?? false;
+}
+
+/** Returns an active session that blocks starting `forType` (respects dashboard toggle). */
+export async function getBlockingSession(
+  admin: SupabaseClient,
+  chatId: string,
+  forType: GameType,
+): Promise<GameSession | null> {
+  if (await allowConcurrentGames(admin, chatId)) {
+    return getActiveSession(admin, chatId, forType);
+  }
+  return getActiveSession(admin, chatId);
+}
+
 export async function getActiveSessionsOfType(
   admin: SupabaseClient,
   chatId: string,
