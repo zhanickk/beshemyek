@@ -140,7 +140,7 @@ const AUTOPILOT_DESC: Partial<Record<FeatureKey, string>> = {
   random_triggers:
     "Сам пишет при тишине 2–4ч и редко влезает в живой разговор без @mention.",
   word_reactions: "Ставит эмодзи на слова-триггеры (дедлайн, жиза, ору…).",
-  prediction: "Случайное предсказание из банка Бешемека. Ответом на сообщение или /prediction @user — для другого мембера.",
+  prediction: "Случайное предсказание из банка Бешемека. Ответом на сообщение или /predictions @user — для другого мембера.",
   excuse: "Сгенерировать абсурдную отмазку.",
   checkin: "Дилеммы «А или Б» с тегами мемберов по очереди.",
 };
@@ -177,12 +177,16 @@ export function findMenuItem(
 }
 
 
-export function buildFeaturesRootKeyboard() {
-  return inlineKeyboard([
+export function buildFeaturesRootKeyboard(map: Record<FeatureKey, boolean>) {
+  const rows: Array<Array<{ text: string; callback_data: string }>> = [
     [{ text: "🎮 Игры", callback_data: "feat:games" }],
     [{ text: "🪙 Экономика", callback_data: "feat:economy" }],
     [{ text: "🍬 Социальное", callback_data: "feat:social" }],
-  ]);
+  ];
+  if (map.prediction) {
+    rows.push([{ text: "🔮 Предсказания", callback_data: "feat:run:prediction" }]);
+  }
+  return inlineKeyboard(rows);
 }
 
 export function featuresRootText(map: Record<FeatureKey, boolean>): string {
@@ -223,6 +227,9 @@ export function buildFeaturesCategoryKeyboard(
     return [{ text: formatMenuBtnLabel(item.label, on), callback_data: `feat:${category}:${item.id}` }];
   });
   rows.push([{ text: "⬅️ Назад", callback_data: "feat:back" }]);
+  if (category !== "autopilot" && map.prediction) {
+    rows.push([{ text: "🔮 Предсказания", callback_data: "feat:run:prediction" }]);
+  }
   return inlineKeyboard(rows);
 }
 

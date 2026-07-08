@@ -274,7 +274,7 @@ async function handleFeaturesCallback(
       );
     } else {
       await telegram.editMessageText(chatTelegramId, messageId, featuresRootText(map), {
-        reply_markup: buildFeaturesRootKeyboard(),
+        reply_markup: buildFeaturesRootKeyboard(map),
       });
     }
     await telegram.answerCallbackQuery(cb.id);
@@ -1410,7 +1410,7 @@ async function handleGroupMessage(admin: ReturnType<typeof getAdmin>, message: T
     if (cmd === "/features" || cmd === "/функции") {
       const map = await getFeatureMap(admin, chatRow.id);
       await telegram.sendMessage(chatId, featuresRootText(map), {
-        reply_markup: buildFeaturesRootKeyboard(),
+        reply_markup: buildFeaturesRootKeyboard(map),
       });
       return;
     }
@@ -1735,7 +1735,7 @@ async function handleGroupMessage(admin: ReturnType<typeof getAdmin>, message: T
         await telegram.sendMessage(chatId, "Маловато вопросов в базе квиза для дуэли.");
       return;
     }
-    if (cmd === "/prediction" && (await isFeatureEnabled(admin, chatRow.id, "prediction"))) {
+    if ((cmd === "/prediction" || cmd === "/predictions") && (await isFeatureEnabled(admin, chatRow.id, "prediction"))) {
       await telegram.sendChatAction(chatId, "typing");
       const targets = await resolvePredictionTargets(
         admin,

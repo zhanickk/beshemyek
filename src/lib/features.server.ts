@@ -79,7 +79,7 @@ export const FEATURE_INFO: Record<FeatureKey, { label: string; how: string }> = 
   red_button: { label: "💣 Красная кнопка", how: "/redbutton" },
   excuse_duel: { label: "🥊 Дуэль отмазок", how: "/excuse_duel" },
   quiz_duel: { label: "⚔️ Квиз-дуэль 1×1", how: "/duel" },
-  prediction: { label: "🔮 Предсказание дня", how: "/prediction" },
+  prediction: { label: "🔮 Предсказание дня", how: "/predictions" },
   word_reactions: { label: "🔥 Реакции на слова-триггеры", how: "сам ставит эмодзи" },
   checkin: { label: "🧠 Чекины А/Б", how: "/checkin — дилеммы с тегами мемберов" },
 };
