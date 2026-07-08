@@ -1,10 +1,11 @@
 import { telegram, inlineKeyboard } from "@/lib/telegram.server";
-import { awardCoins, pickRandomMembers } from "@/lib/economy.server";
+import { awardCoins } from "@/lib/economy.server";
 import {
   createSession,
   getActiveSession,
   finishSession,
   packCallback,
+  updateSessionState,
   type GameCtx,
   type GameSession,
 } from "./engine.server";
@@ -14,25 +15,17 @@ export async function startTruthOrDare(ctx: GameCtx, invoker: { id: number; name
   const existing = await getActiveSession(ctx.admin, ctx.chatId);
   if (existing) return { alreadyActive: true as const };
 
-  const pool = await pickRandomMembers(ctx.admin, ctx.chatId, 1);
-  const target = pool[0]
-    ? {
-        id: pool[0].telegram_user_id,
-        name: pool[0].display_name || pool[0].username || invoker.name,
-      }
-    : invoker;
-
   const session = await createSession(
     ctx.admin,
     ctx.chatId,
     "truth_or_dare",
-    { targetId: target.id, targetName: target.name },
+    { targetId: null, targetName: null, invokerId: invoker.id },
     invoker.id,
     "active",
   );
   await telegram.sendMessage(
     ctx.telegramChatId,
-    `🎯 <b>Правда или действие — AIESEC edition</b>\n${target.name}, выбирай:`,
+    `🎯 <b>Правда или действие — AIESEC edition</b>\nКто жмёт кнопку — тот играет:`,
     {
       reply_markup: inlineKeyboard([
         [
@@ -52,33 +45,48 @@ export async function handleTruthOrDareCallback(
   _payload: string,
   callbackQueryId: string,
   fromUserId: number,
+  fromName: string,
 ) {
-  if (fromUserId !== session.state.targetId) {
-    await telegram.answerCallbackQuery(callbackQueryId, "Это не твой ход 😏", true);
-    return;
-  }
+  const targetId: number | null = session.state.targetId ?? null;
 
   if (action === "truth" || action === "dare") {
-    await ctx.admin
-      .from("game_sessions")
-      .update({ state: { ...session.state, choice: action } })
-      .eq("id", session.id);
+    if (targetId !== null && fromUserId !== targetId) {
+      await telegram.answerCallbackQuery(callbackQueryId, "Это не твой ход 😏", true);
+      return;
+    }
+
+    const nextState = {
+      ...session.state,
+      targetId: fromUserId,
+      targetName: fromName,
+      choice: action,
+    };
+    await updateSessionState(ctx.admin, session.id, nextState);
     await telegram.answerCallbackQuery(
       callbackQueryId,
       action === "truth" ? "Правда!" : "Действие!",
     );
-    await telegram.sendMessage(ctx.telegramChatId, "Выбери уровень фанта:", {
-      reply_markup: inlineKeyboard([
-        [
-          { text: "🙂 Лайт", callback_data: packCallback(session.short_code, "light") },
-          { text: "🔥 Жёстче", callback_data: packCallback(session.short_code, "hard") },
-        ],
-      ]),
-    });
+    await telegram.sendMessage(
+      ctx.telegramChatId,
+      `${fromName}, выбирай уровень фанта:`,
+      {
+        reply_markup: inlineKeyboard([
+          [
+            { text: "🙂 Лайт", callback_data: packCallback(session.short_code, "light") },
+            { text: "🔥 Жёстче", callback_data: packCallback(session.short_code, "hard") },
+          ],
+        ]),
+      },
+    );
     return;
   }
 
   if (action === "light" || action === "hard") {
+    if (targetId === null || fromUserId !== targetId) {
+      await telegram.answerCallbackQuery(callbackQueryId, "Это не твой ход 😏", true);
+      return;
+    }
+
     const choice: "truth" | "dare" = session.state.choice;
     const bank = TRUTH_OR_DARE[choice][action];
     const prompt = bank[Math.floor(Math.random() * bank.length)];

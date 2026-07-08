@@ -27,7 +27,7 @@ export const CROCODILE_WORDS = {
 };
 
 export const TABOO_CARDS = [
-  { word: "Roll Call", forbidden: ["традиция", "кричалка", "конфа", "делегация"] },
+  { word: "Roll Call", forbidden: ["созвон", "перекличка", "кричалка", "встреча"] },
   { word: "LCM", forbidden: ["собрание", "лк", "встреча", "созвон"] },
   { word: "Дедлайн", forbidden: ["срок", "время", "успеть", "горит"] },
   { word: "Handover", forbidden: ["передача", "новый состав", "дела", "эстафета"] },

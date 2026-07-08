@@ -1012,6 +1012,7 @@ async function handleCallbackQuery(admin: ReturnType<typeof getAdmin>, cb: any) 
         parsed.payload,
         cb.id,
         fromUser.id,
+        fromName,
       );
       break;
     case "meme_of_day":
