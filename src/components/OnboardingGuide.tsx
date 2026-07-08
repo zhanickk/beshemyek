@@ -2,14 +2,14 @@ import { useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import {
-  getBotInfo,
-  getWebhookInfo,
-  setBotWebhook,
-  listChats,
-} from "@/lib/bot.functions";
+import { getBotInfo, getWebhookInfo, setBotWebhook, listChats } from "@/lib/bot.functions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -46,15 +46,15 @@ const T = {
             в Telegram.
           </li>
           <li>
-            Отправьте <code className="px-1 py-0.5 rounded bg-muted">/newbot</code>, выберите имя и username
-            (должен заканчиваться на <code>bot</code>).
+            Отправьте <code className="px-1 py-0.5 rounded bg-muted">/newbot</code>, выберите имя и
+            username (должен заканчиваться на <code>bot</code>).
           </li>
           <li>
             Скопируйте токен вида <code>123456:ABC-DEF…</code> — он нужен для следующего шага.
           </li>
           <li>
-            Отправьте <code className="px-1 py-0.5 rounded bg-muted">/setprivacy</code> → выберите бота →
-            нажмите <strong>Disable</strong> (чтобы бот видел все сообщения в группе).
+            Отправьте <code className="px-1 py-0.5 rounded bg-muted">/setprivacy</code> → выберите
+            бота → нажмите <strong>Disable</strong> (чтобы бот видел все сообщения в группе).
           </li>
         </ol>
       ),
@@ -206,7 +206,12 @@ export function OnboardingGuide() {
           >
             {T.steps.botfather.body}
             {!botfatherDone && (
-              <Button variant="outline" size="sm" className="mt-3" onClick={() => setManualBotfather(true)}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => setManualBotfather(true)}
+              >
                 Готово, продолжить
               </Button>
             )}
@@ -220,8 +225,9 @@ export function OnboardingGuide() {
             desc={T.steps.connector.desc}
           >
             <p className="text-sm text-muted-foreground mb-3">
-              Добавьте переменную <code className="px-1 py-0.5 rounded bg-muted">TELEGRAM_API_KEY</code> с
-              токеном от BotFather в секреты Cloudflare Worker. Локально — в файл{" "}
+              Добавьте переменную{" "}
+              <code className="px-1 py-0.5 rounded bg-muted">TELEGRAM_API_KEY</code> с токеном от
+              BotFather в секреты Cloudflare Worker. Локально — в файл{" "}
               <code className="px-1 py-0.5 rounded bg-muted">.dev.vars</code>.
             </p>
             {connectorLinked ? (
@@ -268,9 +274,7 @@ export function OnboardingGuide() {
                 </p>
               )}
               {webhookActive && (
-                <p className="text-xs text-muted-foreground">
-                  Активен: {hookQ.data?.url}
-                </p>
+                <p className="text-xs text-muted-foreground">Активен: {hookQ.data?.url}</p>
               )}
             </div>
           </StepItem>
@@ -303,8 +307,8 @@ export function OnboardingGuide() {
                 )}
               </li>
               <li>
-                Сделайте его <strong>администратором</strong> — иначе он не сможет видеть все сообщения и
-                писать в группу корректно.
+                Сделайте его <strong>администратором</strong> — иначе он не сможет видеть все
+                сообщения и писать в группу корректно.
               </li>
               <li>
                 Бот пришлёт приветственное сообщение — после этого группа появится в разделе{" "}
@@ -337,17 +341,27 @@ export function OnboardingGuide() {
             desc={T.steps.configure.desc}
           >
             <p className="text-sm text-muted-foreground mb-3">
-              В разделе <Link to="/chats" className="text-primary underline">Chats</Link> для каждого чата
-              можно включить:
+              В разделе{" "}
+              <Link to="/chats" className="text-primary underline">
+                Chats
+              </Link>{" "}
+              для каждого чата можно включить:
             </p>
             <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
               <li>Ежедневные icebreaker'ы (с выбором часа отправки)</li>
               <li>Ответы AI на @упоминания и реплаи</li>
-              <li>Викторины и опросы (<code>/trivia</code>, <code>/poll</code>)</li>
+              <li>
+                Викторины и опросы (<code>/trivia</code>, <code>/poll</code>)
+              </li>
               <li>Язык: Авто / Русский / English</li>
             </ul>
             {hasChats && (
-              <Button size="sm" variant="outline" className="mt-3" onClick={() => setManualConfigure(true)}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-3"
+                onClick={() => setManualConfigure(true)}
+              >
                 Готово
               </Button>
             )}
@@ -360,18 +374,25 @@ export function OnboardingGuide() {
             title={T.steps.test.title}
             desc={T.steps.test.desc}
           >
-            <p className="text-sm text-muted-foreground mb-2">Отправьте в группе любую из команд:</p>
+            <p className="text-sm text-muted-foreground mb-2">
+              Отправьте в группе любую из команд:
+            </p>
             <div className="space-y-2">
               {[
                 { cmd: "/icebreaker", hint: "случайный вопрос для разговора" },
                 { cmd: "/trivia", hint: "мини-викторина" },
                 { cmd: "/poll Любимый кофе? | Эспрессо | Капучино | Латте", hint: "свой опрос" },
-                { cmd: botUsername ? `@${botUsername} привет!` : "@your_bot привет!", hint: "AI-ответ" },
+                {
+                  cmd: botUsername ? `@${botUsername} привет!` : "@your_bot привет!",
+                  hint: "AI-ответ",
+                },
               ].map((row) => (
                 <div key={row.cmd} className="flex items-center justify-between gap-2 text-sm">
                   <code className="px-2 py-1 rounded bg-muted text-xs break-all">{row.cmd}</code>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-muted-foreground text-xs hidden sm:inline">{row.hint}</span>
+                    <span className="text-muted-foreground text-xs hidden sm:inline">
+                      {row.hint}
+                    </span>
                     <Button
                       variant="ghost"
                       size="sm"

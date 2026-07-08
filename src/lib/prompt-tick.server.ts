@@ -1,0 +1,57 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { telegram, T, type Lang } from "@/lib/telegram.server";
+
+export async function runPromptTick(admin: SupabaseClient) {
+  const nowHour = new Date().getUTCHours();
+  const { data: chats } = await admin
+    .from("chats")
+    .select(
+      "id, telegram_chat_id, bot_settings(prompt_frequency, prompt_hour_utc, prompts_enabled, quiet_start, quiet_end, language, is_paused)",
+    )
+    .eq("is_active", true);
+
+  const { data: prompts } = await admin
+    .from("prompts")
+    .select("text, language")
+    .eq("is_active", true);
+  if (!prompts || prompts.length === 0) return { sent: 0 };
+
+  let sent = 0;
+  for (const chat of chats ?? []) {
+    const s: any = Array.isArray((chat as any).bot_settings)
+      ? (chat as any).bot_settings[0]
+      : (chat as any).bot_settings;
+    if (!s || !s.prompts_enabled || s.is_paused) continue;
+
+    if (s.quiet_start != null && s.quiet_end != null) {
+      const inQuiet =
+        s.quiet_start < s.quiet_end
+          ? nowHour >= s.quiet_start && nowHour < s.quiet_end
+          : nowHour >= s.quiet_start || nowHour < s.quiet_end;
+      if (inQuiet) continue;
+    }
+
+    let shouldFire = false;
+    if (s.prompt_frequency === "hourly") shouldFire = true;
+    else if (s.prompt_frequency === "daily") shouldFire = nowHour === (s.prompt_hour_utc ?? 14);
+    else if (s.prompt_frequency === "twice_daily")
+      shouldFire =
+        nowHour === (s.prompt_hour_utc ?? 14) || nowHour === ((s.prompt_hour_utc ?? 14) + 12) % 24;
+    if (!shouldFire) continue;
+
+    const lang: Lang = s.language === "ru" ? "ru" : "en";
+    const filtered = prompts.filter((p: any) => p.language === lang);
+    const pool = filtered.length > 0 ? filtered : prompts;
+    const text = pool[Math.floor(Math.random() * pool.length)].text;
+    try {
+      await telegram.sendMessage(chat.telegram_chat_id, `${T.starterLabel[lang]}\n${text}`);
+      await admin
+        .from("bot_sends")
+        .insert({ telegram_chat_id: chat.telegram_chat_id, kind: "prompt", content: text });
+      sent++;
+    } catch (e) {
+      console.error("prompt send failed", chat.telegram_chat_id, e);
+    }
+  }
+  return { sent };
+}

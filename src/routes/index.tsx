@@ -9,7 +9,11 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Chatkeeper — A Telegram bot that keeps your group lively" },
-      { name: "description", content: "Engage your Telegram community with conversation starters, AI replies, and mini-polls. Configure everything from a simple dashboard." },
+      {
+        name: "description",
+        content:
+          "Engage your Telegram community with conversation starters, AI replies, and mini-polls. Configure everything from a simple dashboard.",
+      },
     ],
   }),
   component: Landing,
@@ -36,7 +40,9 @@ function Landing() {
             </div>
             <span className="font-semibold">Chatkeeper</span>
           </div>
-          <Link to="/auth"><Button size="sm">Sign in</Button></Link>
+          <Link to="/auth">
+            <Button size="sm">Sign in</Button>
+          </Link>
         </div>
       </header>
       <main>
@@ -45,19 +51,33 @@ function Landing() {
             Keep your Telegram group <span className="text-primary">talking</span>.
           </h1>
           <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">
-            Chatkeeper is a friendly Telegram bot that drops in conversation starters,
-            chats back when mentioned, and runs quick polls — so your community stays alive,
-            even when it's quiet.
+            Chatkeeper is a friendly Telegram bot that drops in conversation starters, chats back
+            when mentioned, and runs quick polls — so your community stays alive, even when it's
+            quiet.
           </p>
           <div className="mt-8 flex justify-center gap-3">
-            <Link to="/auth"><Button size="lg">Get started</Button></Link>
+            <Link to="/auth">
+              <Button size="lg">Get started</Button>
+            </Link>
           </div>
         </section>
         <section className="max-w-5xl mx-auto px-6 pb-20 grid md:grid-cols-3 gap-6">
           {[
-            { icon: Sparkles, title: "Daily icebreakers", body: "Scheduled prompts keep the chat warm. Customize your library or use ours." },
-            { icon: Bot, title: "Kind AI replies", body: "@mention the bot and it joins in with warm, encouraging responses." },
-            { icon: BarChart3, title: "Polls & trivia", body: "One command launches a poll or AI-generated trivia question." },
+            {
+              icon: Sparkles,
+              title: "Daily icebreakers",
+              body: "Scheduled prompts keep the chat warm. Customize your library or use ours.",
+            },
+            {
+              icon: Bot,
+              title: "Kind AI replies",
+              body: "@mention the bot and it joins in with warm, encouraging responses.",
+            },
+            {
+              icon: BarChart3,
+              title: "Polls & trivia",
+              body: "One command launches a poll or AI-generated trivia question.",
+            },
           ].map((f) => {
             const Icon = f.icon;
             return (

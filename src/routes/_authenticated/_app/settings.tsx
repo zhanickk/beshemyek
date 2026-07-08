@@ -33,7 +33,10 @@ function SettingsPage() {
 
   const setMut = useMutation({
     mutationFn: () => setHook({ data: { url } }),
-    onSuccess: () => { toast.success("Webhook registered"); refetch(); },
+    onSuccess: () => {
+      toast.success("Webhook registered");
+      refetch();
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -54,8 +57,12 @@ function SettingsPage() {
         <CardContent className="space-y-1 text-sm">
           {botInfo ? (
             <>
-              <p><strong>Name:</strong> {botInfo.first_name}</p>
-              <p><strong>Username:</strong> @{botInfo.username}</p>
+              <p>
+                <strong>Name:</strong> {botInfo.first_name}
+              </p>
+              <p>
+                <strong>Username:</strong> @{botInfo.username}
+              </p>
             </>
           ) : (
             <p className="text-muted-foreground">Loading bot info…</p>
@@ -68,9 +75,13 @@ function SettingsPage() {
           <CardTitle className="flex items-center gap-2">
             Webhook
             {isSet ? (
-              <Badge variant="default" className="gap-1"><CheckCircle2 className="w-3 h-3" /> Active</Badge>
+              <Badge variant="default" className="gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Active
+              </Badge>
             ) : (
-              <Badge variant="outline" className="gap-1"><AlertCircle className="w-3 h-3" /> Not set</Badge>
+              <Badge variant="outline" className="gap-1">
+                <AlertCircle className="w-3 h-3" /> Not set
+              </Badge>
             )}
           </CardTitle>
           <CardDescription>
@@ -80,13 +91,21 @@ function SettingsPage() {
         <CardContent className="space-y-3">
           <Label>Webhook URL</Label>
           <Input value={url} onChange={(e) => setUrl(e.target.value)} />
-          <Button onClick={() => setMut.mutate()} disabled={!url}>Set webhook</Button>
+          <Button onClick={() => setMut.mutate()} disabled={!url}>
+            Set webhook
+          </Button>
           {webhook && (
             <div className="text-xs text-muted-foreground pt-2 border-t space-y-1">
-              <p><strong>Current URL:</strong> {webhook.url || <em>none</em>}</p>
-              <p><strong>Pending updates:</strong> {webhook.pending_update_count ?? 0}</p>
+              <p>
+                <strong>Current URL:</strong> {webhook.url || <em>none</em>}
+              </p>
+              <p>
+                <strong>Pending updates:</strong> {webhook.pending_update_count ?? 0}
+              </p>
               {webhook.last_error_message && (
-                <p className="text-destructive"><strong>Last error:</strong> {webhook.last_error_message}</p>
+                <p className="text-destructive">
+                  <strong>Last error:</strong> {webhook.last_error_message}
+                </p>
               )}
             </div>
           )}
@@ -94,11 +113,20 @@ function SettingsPage() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>How to add the bot to a group</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>How to add the bot to a group</CardTitle>
+        </CardHeader>
         <CardContent className="space-y-2 text-sm">
-          <p>1. In Telegram, open your group → ⋮ → <strong>Add members</strong>.</p>
-          <p>2. Search <strong>@{botInfo?.username ?? "your bot"}</strong> and add it.</p>
-          <p>3. Promote the bot to admin (so it can see all messages, not just commands directed at it).</p>
+          <p>
+            1. In Telegram, open your group → ⋮ → <strong>Add members</strong>.
+          </p>
+          <p>
+            2. Search <strong>@{botInfo?.username ?? "your bot"}</strong> and add it.
+          </p>
+          <p>
+            3. Promote the bot to admin (so it can see all messages, not just commands directed at
+            it).
+          </p>
           <p>4. The bot will post a welcome message and start engaging right away.</p>
         </CardContent>
       </Card>

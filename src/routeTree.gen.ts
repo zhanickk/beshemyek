@@ -13,13 +13,20 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/_app'
+import { Route as AuthenticatedAppTumbaRouteImport } from './routes/_authenticated/_app/tumba'
+import { Route as AuthenticatedAppStickersRouteImport } from './routes/_authenticated/_app/stickers'
 import { Route as AuthenticatedAppSettingsRouteImport } from './routes/_authenticated/_app/settings'
 import { Route as AuthenticatedAppPromptsRouteImport } from './routes/_authenticated/_app/prompts'
+import { Route as AuthenticatedAppEconomyRouteImport } from './routes/_authenticated/_app/economy'
 import { Route as AuthenticatedAppDashboardRouteImport } from './routes/_authenticated/_app/dashboard'
 import { Route as AuthenticatedAppChatsRouteImport } from './routes/_authenticated/_app/chats'
 import { Route as AuthenticatedAppActivityRouteImport } from './routes/_authenticated/_app/activity'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
+import { Route as ApiPublicHooksTumbaTickRouteImport } from './routes/api/public/hooks/tumba-tick'
+import { Route as ApiPublicHooksShippingTickRouteImport } from './routes/api/public/hooks/shipping-tick'
 import { Route as ApiPublicHooksPromptTickRouteImport } from './routes/api/public/hooks/prompt-tick'
+import { Route as ApiPublicHooksGameTickRouteImport } from './routes/api/public/hooks/game-tick'
+import { Route as ApiPublicHooksEngagementTickRouteImport } from './routes/api/public/hooks/engagement-tick'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -39,6 +46,17 @@ const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
   id: '/_app',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAppTumbaRoute = AuthenticatedAppTumbaRouteImport.update({
+  id: '/tumba',
+  path: '/tumba',
+  getParentRoute: () => AuthenticatedAppRoute,
+} as any)
+const AuthenticatedAppStickersRoute =
+  AuthenticatedAppStickersRouteImport.update({
+    id: '/stickers',
+    path: '/stickers',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 const AuthenticatedAppSettingsRoute =
   AuthenticatedAppSettingsRouteImport.update({
     id: '/settings',
@@ -48,6 +66,11 @@ const AuthenticatedAppSettingsRoute =
 const AuthenticatedAppPromptsRoute = AuthenticatedAppPromptsRouteImport.update({
   id: '/prompts',
   path: '/prompts',
+  getParentRoute: () => AuthenticatedAppRoute,
+} as any)
+const AuthenticatedAppEconomyRoute = AuthenticatedAppEconomyRouteImport.update({
+  id: '/economy',
+  path: '/economy',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
 const AuthenticatedAppDashboardRoute =
@@ -73,10 +96,32 @@ const ApiPublicTelegramWebhookRoute =
     path: '/api/public/telegram/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksTumbaTickRoute = ApiPublicHooksTumbaTickRouteImport.update({
+  id: '/api/public/hooks/tumba-tick',
+  path: '/api/public/hooks/tumba-tick',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicHooksShippingTickRoute =
+  ApiPublicHooksShippingTickRouteImport.update({
+    id: '/api/public/hooks/shipping-tick',
+    path: '/api/public/hooks/shipping-tick',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksPromptTickRoute =
   ApiPublicHooksPromptTickRouteImport.update({
     id: '/api/public/hooks/prompt-tick',
     path: '/api/public/hooks/prompt-tick',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksGameTickRoute = ApiPublicHooksGameTickRouteImport.update({
+  id: '/api/public/hooks/game-tick',
+  path: '/api/public/hooks/game-tick',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicHooksEngagementTickRoute =
+  ApiPublicHooksEngagementTickRouteImport.update({
+    id: '/api/public/hooks/engagement-tick',
+    path: '/api/public/hooks/engagement-tick',
     getParentRoute: () => rootRouteImport,
   } as any)
 
@@ -86,9 +131,16 @@ export interface FileRoutesByFullPath {
   '/activity': typeof AuthenticatedAppActivityRoute
   '/chats': typeof AuthenticatedAppChatsRoute
   '/dashboard': typeof AuthenticatedAppDashboardRoute
+  '/economy': typeof AuthenticatedAppEconomyRoute
   '/prompts': typeof AuthenticatedAppPromptsRoute
   '/settings': typeof AuthenticatedAppSettingsRoute
+  '/stickers': typeof AuthenticatedAppStickersRoute
+  '/tumba': typeof AuthenticatedAppTumbaRoute
+  '/api/public/hooks/engagement-tick': typeof ApiPublicHooksEngagementTickRoute
+  '/api/public/hooks/game-tick': typeof ApiPublicHooksGameTickRoute
   '/api/public/hooks/prompt-tick': typeof ApiPublicHooksPromptTickRoute
+  '/api/public/hooks/shipping-tick': typeof ApiPublicHooksShippingTickRoute
+  '/api/public/hooks/tumba-tick': typeof ApiPublicHooksTumbaTickRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -97,9 +149,16 @@ export interface FileRoutesByTo {
   '/activity': typeof AuthenticatedAppActivityRoute
   '/chats': typeof AuthenticatedAppChatsRoute
   '/dashboard': typeof AuthenticatedAppDashboardRoute
+  '/economy': typeof AuthenticatedAppEconomyRoute
   '/prompts': typeof AuthenticatedAppPromptsRoute
   '/settings': typeof AuthenticatedAppSettingsRoute
+  '/stickers': typeof AuthenticatedAppStickersRoute
+  '/tumba': typeof AuthenticatedAppTumbaRoute
+  '/api/public/hooks/engagement-tick': typeof ApiPublicHooksEngagementTickRoute
+  '/api/public/hooks/game-tick': typeof ApiPublicHooksGameTickRoute
   '/api/public/hooks/prompt-tick': typeof ApiPublicHooksPromptTickRoute
+  '/api/public/hooks/shipping-tick': typeof ApiPublicHooksShippingTickRoute
+  '/api/public/hooks/tumba-tick': typeof ApiPublicHooksTumbaTickRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesById {
@@ -111,9 +170,16 @@ export interface FileRoutesById {
   '/_authenticated/_app/activity': typeof AuthenticatedAppActivityRoute
   '/_authenticated/_app/chats': typeof AuthenticatedAppChatsRoute
   '/_authenticated/_app/dashboard': typeof AuthenticatedAppDashboardRoute
+  '/_authenticated/_app/economy': typeof AuthenticatedAppEconomyRoute
   '/_authenticated/_app/prompts': typeof AuthenticatedAppPromptsRoute
   '/_authenticated/_app/settings': typeof AuthenticatedAppSettingsRoute
+  '/_authenticated/_app/stickers': typeof AuthenticatedAppStickersRoute
+  '/_authenticated/_app/tumba': typeof AuthenticatedAppTumbaRoute
+  '/api/public/hooks/engagement-tick': typeof ApiPublicHooksEngagementTickRoute
+  '/api/public/hooks/game-tick': typeof ApiPublicHooksGameTickRoute
   '/api/public/hooks/prompt-tick': typeof ApiPublicHooksPromptTickRoute
+  '/api/public/hooks/shipping-tick': typeof ApiPublicHooksShippingTickRoute
+  '/api/public/hooks/tumba-tick': typeof ApiPublicHooksTumbaTickRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRouteTypes {
@@ -124,9 +190,16 @@ export interface FileRouteTypes {
     | '/activity'
     | '/chats'
     | '/dashboard'
+    | '/economy'
     | '/prompts'
     | '/settings'
+    | '/stickers'
+    | '/tumba'
+    | '/api/public/hooks/engagement-tick'
+    | '/api/public/hooks/game-tick'
     | '/api/public/hooks/prompt-tick'
+    | '/api/public/hooks/shipping-tick'
+    | '/api/public/hooks/tumba-tick'
     | '/api/public/telegram/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -135,9 +208,16 @@ export interface FileRouteTypes {
     | '/activity'
     | '/chats'
     | '/dashboard'
+    | '/economy'
     | '/prompts'
     | '/settings'
+    | '/stickers'
+    | '/tumba'
+    | '/api/public/hooks/engagement-tick'
+    | '/api/public/hooks/game-tick'
     | '/api/public/hooks/prompt-tick'
+    | '/api/public/hooks/shipping-tick'
+    | '/api/public/hooks/tumba-tick'
     | '/api/public/telegram/webhook'
   id:
     | '__root__'
@@ -148,9 +228,16 @@ export interface FileRouteTypes {
     | '/_authenticated/_app/activity'
     | '/_authenticated/_app/chats'
     | '/_authenticated/_app/dashboard'
+    | '/_authenticated/_app/economy'
     | '/_authenticated/_app/prompts'
     | '/_authenticated/_app/settings'
+    | '/_authenticated/_app/stickers'
+    | '/_authenticated/_app/tumba'
+    | '/api/public/hooks/engagement-tick'
+    | '/api/public/hooks/game-tick'
     | '/api/public/hooks/prompt-tick'
+    | '/api/public/hooks/shipping-tick'
+    | '/api/public/hooks/tumba-tick'
     | '/api/public/telegram/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -158,7 +245,11 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicHooksEngagementTickRoute: typeof ApiPublicHooksEngagementTickRoute
+  ApiPublicHooksGameTickRoute: typeof ApiPublicHooksGameTickRoute
   ApiPublicHooksPromptTickRoute: typeof ApiPublicHooksPromptTickRoute
+  ApiPublicHooksShippingTickRoute: typeof ApiPublicHooksShippingTickRoute
+  ApiPublicHooksTumbaTickRoute: typeof ApiPublicHooksTumbaTickRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
 
@@ -192,6 +283,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/_app/tumba': {
+      id: '/_authenticated/_app/tumba'
+      path: '/tumba'
+      fullPath: '/tumba'
+      preLoaderRoute: typeof AuthenticatedAppTumbaRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/_app/stickers': {
+      id: '/_authenticated/_app/stickers'
+      path: '/stickers'
+      fullPath: '/stickers'
+      preLoaderRoute: typeof AuthenticatedAppStickersRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/_authenticated/_app/settings': {
       id: '/_authenticated/_app/settings'
       path: '/settings'
@@ -204,6 +309,13 @@ declare module '@tanstack/react-router' {
       path: '/prompts'
       fullPath: '/prompts'
       preLoaderRoute: typeof AuthenticatedAppPromptsRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/_app/economy': {
+      id: '/_authenticated/_app/economy'
+      path: '/economy'
+      fullPath: '/economy'
+      preLoaderRoute: typeof AuthenticatedAppEconomyRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
     '/_authenticated/_app/dashboard': {
@@ -234,11 +346,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTelegramWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/tumba-tick': {
+      id: '/api/public/hooks/tumba-tick'
+      path: '/api/public/hooks/tumba-tick'
+      fullPath: '/api/public/hooks/tumba-tick'
+      preLoaderRoute: typeof ApiPublicHooksTumbaTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/shipping-tick': {
+      id: '/api/public/hooks/shipping-tick'
+      path: '/api/public/hooks/shipping-tick'
+      fullPath: '/api/public/hooks/shipping-tick'
+      preLoaderRoute: typeof ApiPublicHooksShippingTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/prompt-tick': {
       id: '/api/public/hooks/prompt-tick'
       path: '/api/public/hooks/prompt-tick'
       fullPath: '/api/public/hooks/prompt-tick'
       preLoaderRoute: typeof ApiPublicHooksPromptTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/game-tick': {
+      id: '/api/public/hooks/game-tick'
+      path: '/api/public/hooks/game-tick'
+      fullPath: '/api/public/hooks/game-tick'
+      preLoaderRoute: typeof ApiPublicHooksGameTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/engagement-tick': {
+      id: '/api/public/hooks/engagement-tick'
+      path: '/api/public/hooks/engagement-tick'
+      fullPath: '/api/public/hooks/engagement-tick'
+      preLoaderRoute: typeof ApiPublicHooksEngagementTickRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -248,16 +388,22 @@ interface AuthenticatedAppRouteChildren {
   AuthenticatedAppActivityRoute: typeof AuthenticatedAppActivityRoute
   AuthenticatedAppChatsRoute: typeof AuthenticatedAppChatsRoute
   AuthenticatedAppDashboardRoute: typeof AuthenticatedAppDashboardRoute
+  AuthenticatedAppEconomyRoute: typeof AuthenticatedAppEconomyRoute
   AuthenticatedAppPromptsRoute: typeof AuthenticatedAppPromptsRoute
   AuthenticatedAppSettingsRoute: typeof AuthenticatedAppSettingsRoute
+  AuthenticatedAppStickersRoute: typeof AuthenticatedAppStickersRoute
+  AuthenticatedAppTumbaRoute: typeof AuthenticatedAppTumbaRoute
 }
 
 const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppActivityRoute: AuthenticatedAppActivityRoute,
   AuthenticatedAppChatsRoute: AuthenticatedAppChatsRoute,
   AuthenticatedAppDashboardRoute: AuthenticatedAppDashboardRoute,
+  AuthenticatedAppEconomyRoute: AuthenticatedAppEconomyRoute,
   AuthenticatedAppPromptsRoute: AuthenticatedAppPromptsRoute,
   AuthenticatedAppSettingsRoute: AuthenticatedAppSettingsRoute,
+  AuthenticatedAppStickersRoute: AuthenticatedAppStickersRoute,
+  AuthenticatedAppTumbaRoute: AuthenticatedAppTumbaRoute,
 }
 
 const AuthenticatedAppRouteWithChildren =
@@ -278,7 +424,11 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicHooksEngagementTickRoute: ApiPublicHooksEngagementTickRoute,
+  ApiPublicHooksGameTickRoute: ApiPublicHooksGameTickRoute,
   ApiPublicHooksPromptTickRoute: ApiPublicHooksPromptTickRoute,
+  ApiPublicHooksShippingTickRoute: ApiPublicHooksShippingTickRoute,
+  ApiPublicHooksTumbaTickRoute: ApiPublicHooksTumbaTickRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
 export const routeTree = rootRouteImport

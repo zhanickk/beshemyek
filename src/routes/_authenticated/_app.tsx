@@ -1,7 +1,18 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, LayoutDashboard, Users, Sparkles, Activity, Settings, LogOut } from "lucide-react";
+import {
+  MessageCircle,
+  LayoutDashboard,
+  Users,
+  Sparkles,
+  Activity,
+  Settings,
+  LogOut,
+  Coins,
+  Candy,
+  Smile,
+} from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +24,9 @@ const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/chats", label: "Chats", icon: Users },
   { to: "/prompts", label: "Prompts", icon: Sparkles },
+  { to: "/economy", label: "Economy", icon: Coins },
+  { to: "/tumba", label: "Tumba", icon: Candy },
+  { to: "/stickers", label: "Stickers", icon: Smile },
   { to: "/activity", label: "Activity", icon: Activity },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;

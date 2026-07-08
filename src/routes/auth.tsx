@@ -69,22 +69,36 @@ function AuthPage() {
               <Label>Email</Label>
               <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
               <Label>Password</Label>
-              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-              <Button className="w-full" onClick={signIn} disabled={loading}>Sign in</Button>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <Button className="w-full" onClick={signIn} disabled={loading}>
+                Sign in
+              </Button>
             </TabsContent>
             <TabsContent value="signup" className="space-y-3 mt-4">
               <Label>Email</Label>
               <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
               <Label>Password</Label>
-              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-              <Button className="w-full" onClick={signUp} disabled={loading}>Create account</Button>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <Button className="w-full" onClick={signUp} disabled={loading}>
+                Create account
+              </Button>
               <p className="text-xs text-muted-foreground text-center">
                 The first account created becomes the admin.
               </p>
             </TabsContent>
           </Tabs>
           <p className="text-xs text-muted-foreground text-center mt-4">
-            <Link to="/" className="underline">Back to home</Link>
+            <Link to="/" className="underline">
+              Back to home
+            </Link>
           </p>
         </CardContent>
       </Card>

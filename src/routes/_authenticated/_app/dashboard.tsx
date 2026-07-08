@@ -29,7 +29,13 @@ function Dashboard() {
       <div>
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground">
-          {botInfo?.username ? <>Connected as <strong>@{botInfo.username}</strong></> : "Telegram bot overview"}
+          {botInfo?.username ? (
+            <>
+              Connected as <strong>@{botInfo.username}</strong>
+            </>
+          ) : (
+            "Telegram bot overview"
+          )}
         </p>
       </div>
 
@@ -41,7 +47,9 @@ function Dashboard() {
           return (
             <Card key={c.label}>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">{c.label}</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {c.label}
+                </CardTitle>
                 <Icon className="w-4 h-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>

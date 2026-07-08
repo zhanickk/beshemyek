@@ -1,0 +1,966 @@
+{
+  "meta": {
+    "source": "ChatExport_2026-07-06 (AIESEC Trash Chat)",
+    "generated_at": "2026-07-06T11:04:05.972Z",
+    "note": "Samples for reviewing bot style adaptation with other models. Not injected verbatim into bot."
+  },
+  "stats": {
+    "total_human_messages": 70739,
+    "unique_users": 118,
+    "avg_length": 25.5,
+    "pct_len_lte_15": 50.4,
+    "pct_len_lte_50": 93.4
+  },
+  "what_bot_uses": {
+    "file": "src/lib/chat-style.server.ts",
+    "field": "TRASH_CHAT_STYLE_DIRECTIVE",
+    "injected_in": "generateAiReply() in webhook.ts — always for Russian replies",
+    "not_injected": "Individual messages below are NOT copied into bot prompts"
+  },
+  "bot_directive_preview": "Профиль реального чата: короткие реплики (~50% <=15 chars), trash-chat energy, rare AIESEC jargon (~0.4%), occasional Kazakh/English, light profanity ok, hype with emojis. See src/lib/chat-style.server.ts for full text.",
+  "samples": {
+    "very_short": [
+      {
+        "name": "?",
+        "text": "Даже позирует",
+        "len": 13
+      },
+      {
+        "name": "?",
+        "text": "Нет?",
+        "len": 4
+      },
+      {
+        "name": "ARS",
+        "text": "Солгой",
+        "len": 6
+      },
+      {
+        "name": "barb-",
+        "text": "Размееет 💋💋💋",
+        "len": 15
+      },
+      {
+        "name": "ccts",
+        "text": "анлак",
+        "len": 5
+      },
+      {
+        "name": "димаш",
+        "text": "dayum",
+        "len": 5
+      },
+      {
+        "name": "Chingiz Kakenov",
+        "text": "удачи аитушники",
+        "len": 15
+      },
+      {
+        "name": "Taimas",
+        "text": "Соу тафф",
+        "len": 8
+      },
+      {
+        "name": "?",
+        "text": "🔥🔥🔥🔥🔥",
+        "len": 10
+      },
+      {
+        "name": "?",
+        "text": "Жокжок",
+        "len": 6
+      },
+      {
+        "name": "Арухан",
+        "text": "сколько людей?",
+        "len": 14
+      },
+      {
+        "name": "анель",
+        "text": "Ема даймонд раш",
+        "len": 15
+      },
+      {
+        "name": "димаш",
+        "text": "че реально?",
+        "len": 11
+      },
+      {
+        "name": "g",
+        "text": "Актобе евробеш",
+        "len": 14
+      },
+      {
+        "name": "dan",
+        "text": "Кате кате",
+        "len": 9
+      },
+      {
+        "name": "Арухан",
+        "text": "еееееема",
+        "len": 8
+      },
+      {
+        "name": "ARS",
+        "text": "😭😭😭",
+        "len": 6
+      },
+      {
+        "name": "?",
+        "text": "гости уборка",
+        "len": 12
+      },
+      {
+        "name": "пухля",
+        "text": "это как",
+        "len": 7
+      },
+      {
+        "name": "malina",
+        "text": "очень тепло",
+        "len": 11
+      },
+      {
+        "name": "Nurkhat",
+        "text": "Ас болсын",
+        "len": 9
+      },
+      {
+        "name": "ARS",
+        "text": "CYAIDG",
+        "len": 6
+      },
+      {
+        "name": "?",
+        "text": "В крг кайфово",
+        "len": 13
+      },
+      {
+        "name": "?",
+        "text": "без ораза",
+        "len": 9
+      },
+      {
+        "name": "димаш",
+        "text": "приходите",
+        "len": 9
+      },
+      {
+        "name": "димаш",
+        "text": "frrrrr",
+        "len": 6
+      },
+      {
+        "name": "?",
+        "text": "ты умеешь па???",
+        "len": 15
+      },
+      {
+        "name": "ARS",
+        "text": "Фр фр",
+        "len": 5
+      },
+      {
+        "name": "Аdeliya",
+        "text": "вайяяяя😍😍😍😍",
+        "len": 15
+      },
+      {
+        "name": "?",
+        "text": "А ты как чалишь",
+        "len": 15
+      },
+      {
+        "name": "Арухан",
+        "text": "точно",
+        "len": 5
+      },
+      {
+        "name": "Ыбрыч",
+        "text": "Кетий",
+        "len": 5
+      },
+      {
+        "name": "Ramchik",
+        "text": "че тааааам",
+        "len": 10
+      },
+      {
+        "name": "Nurkhat",
+        "text": "Это что такое",
+        "len": 13
+      },
+      {
+        "name": "?",
+        "text": "иди к дине",
+        "len": 10
+      },
+      {
+        "name": "Taimas",
+        "text": "тема",
+        "len": 4
+      },
+      {
+        "name": "Меру",
+        "text": "🤣",
+        "len": 2
+      },
+      {
+        "name": "Nurkhat",
+        "text": "Бул север гой",
+        "len": 13
+      },
+      {
+        "name": "Qina",
+        "text": "гдеарсен",
+        "len": 8
+      },
+      {
+        "name": "?",
+        "text": "Синема",
+        "len": 6
+      }
+    ],
+    "medium": [
+      {
+        "name": "Ыбрыч",
+        "text": "хахахахахахаахахахха",
+        "len": 20
+      },
+      {
+        "name": "?",
+        "text": "Экзаменді қалай тапсырам деп",
+        "len": 28
+      },
+      {
+        "name": "sarsenbinova amira",
+        "text": "Ребят кто то забрал мои кроссы",
+        "len": 30
+      },
+      {
+        "name": "Нурай",
+        "text": "@aigerim678 молодчинка нихуевый пост прям 💥💥💥",
+        "len": 48
+      },
+      {
+        "name": "?",
+        "text": "Готе после киношки",
+        "len": 18
+      },
+      {
+        "name": "ARS",
+        "text": "😘пусть тренируется",
+        "len": 19
+      },
+      {
+        "name": ".",
+        "text": "Папочка Арсен башляет??",
+        "len": 23
+      },
+      {
+        "name": "?",
+        "text": "газ гулять карчое",
+        "len": 17
+      },
+      {
+        "name": "Аdeliya",
+        "text": "всеееех ждееем сегодня!!!!",
+        "len": 26
+      },
+      {
+        "name": "альнура знллв",
+        "text": "Эхххх меня раскрыли",
+        "len": 19
+      },
+      {
+        "name": "Nurkhat",
+        "text": "Для военки ещё бесплатно снимать",
+        "len": 32
+      },
+      {
+        "name": "Аиша",
+        "text": "@beabayo офигеть😍😍😍",
+        "len": 22
+      },
+      {
+        "name": "Aruzhan",
+        "text": "можно спокойно идти спать",
+        "len": 25
+      },
+      {
+        "name": "?",
+        "text": "офигеть 20 летний медведь",
+        "len": 25
+      },
+      {
+        "name": "?",
+        "text": "Это лучше чем анэмплойед",
+        "len": 24
+      },
+      {
+        "name": "?",
+        "text": "аделия там видно?",
+        "len": 17
+      },
+      {
+        "name": "Ramchik",
+        "text": "томоети как может быть выжан",
+        "len": 28
+      },
+      {
+        "name": "?",
+        "text": "👋 дошел до алматинской локалки",
+        "len": 31
+      },
+      {
+        "name": "?",
+        "text": "#bingochallenge Аралаш",
+        "len": 22
+      },
+      {
+        "name": "Ramchik",
+        "text": "/сomp йельдар ребра",
+        "len": 19
+      },
+      {
+        "name": "Ddallplon",
+        "text": "Последняя фотография вообще огонь",
+        "len": 33
+      },
+      {
+        "name": "Ramchik",
+        "text": "бонжур элект борд",
+        "len": 17
+      },
+      {
+        "name": "Ramchik",
+        "text": "айтушники газ столовая",
+        "len": 22
+      },
+      {
+        "name": "Ramchik",
+        "text": "исх хорошо посидеть",
+        "len": 19
+      },
+      {
+        "name": "Tomiris",
+        "text": "@leilazhkk с днем рождения ❤️❤️❤️❤️😘😘😘😘",
+        "len": 43
+      },
+      {
+        "name": "Dana",
+        "text": "У Кемала Ибры Алихана бд мкт ммб и Муслима есть",
+        "len": 47
+      },
+      {
+        "name": "sultah",
+        "text": "в алматы кто нибудь знает кафешки с котами?",
+        "len": 43
+      },
+      {
+        "name": "Ddallplon",
+        "text": "Фидбэк обязательный что-ли",
+        "len": 26
+      },
+      {
+        "name": "?",
+        "text": "Реакция басып кояд",
+        "len": 18
+      },
+      {
+        "name": "Magzhan Saben",
+        "text": "осп гитлер болды ма?",
+        "len": 20
+      },
+      {
+        "name": "Nurkhat",
+        "text": "Так там прикол не в этом",
+        "len": 24
+      },
+      {
+        "name": "?",
+        "text": "Ас болсын браи😘",
+        "len": 16
+      },
+      {
+        "name": "Аdeliya",
+        "text": "@ayrxsee брала у него",
+        "len": 21
+      },
+      {
+        "name": "Anelle",
+        "text": "@kotikwoo пряник и кнут?",
+        "len": 24
+      },
+      {
+        "name": "Amina",
+        "text": "всем спасибо!!💞💞",
+        "len": 18
+      },
+      {
+        "name": "Amina",
+        "text": "но кстати для алена карим любовник",
+        "len": 34
+      },
+      {
+        "name": "b",
+        "text": "ты примерный парень просто",
+        "len": 26
+      },
+      {
+        "name": "sultah",
+        "text": "я как баклан носил шапку в 6 классе",
+        "len": 35
+      },
+      {
+        "name": "karim",
+        "text": "бля я будто файнал босс ссх, всю херню брал",
+        "len": 43
+      },
+      {
+        "name": "Анель",
+        "text": "@aminaklassnaya с днем рождения🫶🏽🫶🏽🫶🏽",
+        "len": 43
+      }
+    ],
+    "longer": [
+      {
+        "name": "Amina",
+        "text": "https://www.instagram.com/reel/DTyF8ItCP4gCAMD5OX-Eik1Hk9KceT99TSBLc00/?igsh=NzVjOGEzMm1oM3lo",
+        "len": 93
+      },
+      {
+        "name": "?",
+        "text": "@sulltanbekk капец про вьетнам нифиговый пост, и в целом страна для отдыха самое то😍",
+        "len": 85
+      },
+      {
+        "name": "Арухан",
+        "text": "наверное многие видели в тиктоке, сейчас очень популярная игра meccha chameleon #bingochallenge",
+        "len": 95
+      },
+      {
+        "name": "Azat Turarov",
+        "text": "@llilaru с днем рождения желаю счастья и здоровья 🥳🥳🥳",
+        "len": 56
+      },
+      {
+        "name": "yelnur",
+        "text": "@sas_hasalt @mchakchaka @leilazhkk @Thsydag @akzvorzakon @yyerkee gogo guys",
+        "len": 75
+      },
+      {
+        "name": "Елдар Джарахов",
+        "text": "🚨🚨🚨 Super reminder приходите все, будет супер интересно",
+        "len": 58
+      },
+      {
+        "name": "Nurkhat",
+        "text": "Внатуре вы пользовались имя Рамчика без его согласия",
+        "len": 52
+      },
+      {
+        "name": "Nurkhat",
+        "text": "Я готов погулять с Дорма до страбакса Меги и обратно",
+        "len": 52
+      },
+      {
+        "name": "Tomiris",
+        "text": "@noxa_20 @ayrxsee @albinaslt @iktygd1 четам гоуте дроп вашего ос опыта OC ATE 🩵🔥",
+        "len": 82
+      },
+      {
+        "name": "lil (ali)xan",
+        "text": "треш пацаны, кто в дорме и хочет вещи перетаскать помочь",
+        "len": 56
+      },
+      {
+        "name": "?",
+        "text": "Нам нужны люди для сьемок рилсов, очень срочно прошу",
+        "len": 52
+      },
+      {
+        "name": "Qina",
+        "text": "трэш привет если кто то свободен можете помочь перетащить холодильник в соседний блок пж 🙏",
+        "len": 91
+      },
+      {
+        "name": "ARS",
+        "text": "@Aigerim_Alimkhan @nurabruhskii @sas_hasalt @mariyussha @nurvvi @yyerkee @nazymiii SO PROOOOOUD OF YOUUUU🥳🥳🥳🥳",
+        "len": 113
+      },
+      {
+        "name": "Аdeliya",
+        "text": "@aminaklassnaya с днем рождения Амина классная🫶🏻🫶🏻🫶🏻",
+        "len": 58
+      },
+      {
+        "name": "Beabayo",
+        "text": "Трэш четам СЕГОДНЯ ВЫШЕЛ ТГ ПОСТ ТОП СТАЖИРОВОК Сделала этот пост @lqeap Готе быстро реакции накидаем и комменты напишем",
+        "len": 120
+      },
+      {
+        "name": "?",
+        "text": "Я могу у кого то одолжить калькулятор с 15:00 до 17:00, и желательно в унике забрать пж",
+        "len": 87
+      },
+      {
+        "name": "Меру",
+        "text": "@leilazhkk с днем рождения!!!!!❤️‍🔥❤️‍🔥❤️‍🔥❤️‍🔥❤️‍🔥❤️‍🔥",
+        "len": 61
+      },
+      {
+        "name": "алдияр",
+        "text": "@Aigerim_Alimkhan @nurabruhskii @sas_hasalt @mariyussha @nurvvi @yyerkee @nazymiii SOO PROUD OF YOUUU 🔥🔥🔥",
+        "len": 108
+      },
+      {
+        "name": "Qina",
+        "text": "у кого в д5 есть обезбол или другое лекарство от головной боли? 🙏",
+        "len": 66
+      },
+      {
+        "name": "Inkar Inayatkyzy",
+        "text": "@tomoeti @hehehesuiii можете пдф студенческие отправить?",
+        "len": 56
+      }
+    ],
+    "laugh": [
+      {
+        "name": "Ddallplon",
+        "text": "Аххахаха",
+        "len": 8
+      },
+      {
+        "name": "Ddallplon",
+        "text": "Аххахаха",
+        "len": 8
+      },
+      {
+        "name": "?",
+        "text": "Аххахахаххаха",
+        "len": 13
+      },
+      {
+        "name": "ая без й",
+        "text": "хаахахаххаа",
+        "len": 11
+      },
+      {
+        "name": "Ибра",
+        "text": "ахахаха сукааа",
+        "len": 14
+      },
+      {
+        "name": "Аиша",
+        "text": "АХАХАХХАХА",
+        "len": 10
+      },
+      {
+        "name": "Аdeliya",
+        "text": "вхахаххахахахаха",
+        "len": 16
+      },
+      {
+        "name": "Inkar Inayatkyzy",
+        "text": "ХАХАХАХАХАХАҺ",
+        "len": 13
+      },
+      {
+        "name": "Ыбрыч",
+        "text": "Аха",
+        "len": 3
+      },
+      {
+        "name": "Dana",
+        "text": "ахахаххаха",
+        "len": 10
+      },
+      {
+        "name": "?",
+        "text": "ахахахахахахахаахахах",
+        "len": 21
+      },
+      {
+        "name": "Nurkhat",
+        "text": "Аххахахвхахахахха",
+        "len": 17
+      },
+      {
+        "name": "Нурай",
+        "text": "АХАХХАХАХ ТЕ НОСКИ",
+        "len": 18
+      },
+      {
+        "name": "Аdeliya",
+        "text": "хыхахаххаха",
+        "len": 11
+      },
+      {
+        "name": "?",
+        "text": "Ахахахахах",
+        "len": 10
+      }
+    ],
+    "profanity": [
+      {
+        "name": "?",
+        "text": "бляя",
+        "len": 4
+      },
+      {
+        "name": "Маликан",
+        "text": "лучший панишмент наху",
+        "len": 21
+      },
+      {
+        "name": "Yerkebulan",
+        "text": "Ебать",
+        "len": 5
+      },
+      {
+        "name": "Жанчо",
+        "text": "Еба",
+        "len": 3
+      },
+      {
+        "name": "альнура знллв",
+        "text": "там ддл 18 мая вроде к профов и они оба тянут пиздец",
+        "len": 52
+      },
+      {
+        "name": "Аdeliya",
+        "text": "ебааа",
+        "len": 5
+      },
+      {
+        "name": "Nurkhat",
+        "text": "Капец",
+        "len": 5
+      },
+      {
+        "name": "ARS",
+        "text": "Фу бля",
+        "len": 6
+      },
+      {
+        "name": "альнура знллв",
+        "text": "бляяяяя",
+        "len": 7
+      },
+      {
+        "name": "Yerkebulan",
+        "text": "Пиздец кызык летка болайын деп тур просто осы летка",
+        "len": 51
+      },
+      {
+        "name": "Taimas",
+        "text": "Ебааа",
+        "len": 5
+      },
+      {
+        "name": "Taimas",
+        "text": "Бля поидее",
+        "len": 10
+      },
+      {
+        "name": "Amina",
+        "text": "капец погода кайф",
+        "len": 17
+      },
+      {
+        "name": "ccts",
+        "text": "@businesscup_3 красавчик бля❤️‍🔥❤️‍🔥❤️‍🔥❤️‍🔥🔥🔥🔥🔥",
+        "len": 56
+      },
+      {
+        "name": "ARS",
+        "text": "Газ бля",
+        "len": 7
+      }
+    ],
+    "kazakh_mix": [
+      {
+        "name": "Ramchik",
+        "text": "не қалды өзі",
+        "len": 12
+      },
+      {
+        "name": "Dosbol",
+        "text": "Ой рахмет",
+        "len": 9
+      },
+      {
+        "name": "анель",
+        "text": "АХХАХАХАХАХАХХАХАХАХҺ",
+        "len": 21
+      },
+      {
+        "name": "?",
+        "text": "Ауырмаңдар",
+        "len": 10
+      },
+      {
+        "name": "Ramchik",
+        "text": "Ас болсын Ноха",
+        "len": 14
+      },
+      {
+        "name": "Dosbol",
+        "text": "Сол кино көріп",
+        "len": 14
+      },
+      {
+        "name": "?",
+        "text": "Алға Қайрат поидее",
+        "len": 18
+      },
+      {
+        "name": "?",
+        "text": "шымкт смотрит",
+        "len": 13
+      },
+      {
+        "name": "?",
+        "text": "я в шыме",
+        "len": 8
+      },
+      {
+        "name": "анель",
+        "text": "Әнел болса түсінікті",
+        "len": 20
+      },
+      {
+        "name": "Magzhan Saben",
+        "text": "жаксы отырыс болсын ЕМ✨",
+        "len": 23
+      },
+      {
+        "name": "Dosbol",
+        "text": "Рахмет",
+        "len": 6
+      },
+      {
+        "name": "AS",
+        "text": "лс дей был🔥 рахмет мхп🤍",
+        "len": 25
+      },
+      {
+        "name": "Ибра",
+        "text": "Біз тұқым деп басқа затты айтамыз",
+        "len": 33
+      },
+      {
+        "name": "Нурай",
+        "text": "Да ладно че Соншама такси емес шығар",
+        "len": 36
+      }
+    ],
+    "english_mix": [
+      {
+        "name": "lil (ali)xan",
+        "text": "асан говорит same",
+        "len": 17
+      },
+      {
+        "name": "Ramchik",
+        "text": "это мой уебок осишка мембер so proud of you @businesscup_3",
+        "len": 58
+      },
+      {
+        "name": "Меру",
+        "text": "@its_chingiz so proud of you!!!!🔥🔥🔥",
+        "len": 38
+      },
+      {
+        "name": "Anelle",
+        "text": "@Aigerim_Alimkhan so proud of you champ❤️‍🔥",
+        "len": 44
+      },
+      {
+        "name": "yelnur",
+        "text": "@ibruhhh soo proud of u",
+        "len": 23
+      },
+      {
+        "name": "ri",
+        "text": "fr",
+        "len": 2
+      },
+      {
+        "name": "Алихан",
+        "text": "@its_chingiz so proud of you🥳👏👏👏",
+        "len": 36
+      },
+      {
+        "name": "Tomiris",
+        "text": "@aneskan so proud of you ❤️‍🔥❤️‍🔥❤️‍🔥",
+        "len": 40
+      },
+      {
+        "name": "Ddallplon",
+        "text": "@ibruhhh SO PROUD OF YOU 🥳🥳🥳",
+        "len": 31
+      },
+      {
+        "name": "Алан Турапов",
+        "text": "Sooo proud of youu",
+        "len": 18
+      },
+      {
+        "name": "Sherkhan",
+        "text": "@meruertttka so proud of you🔥",
+        "len": 30
+      },
+      {
+        "name": "ARS",
+        "text": "@meruertttka SO PROUD OF UUUUU🔥🔥",
+        "len": 34
+      },
+      {
+        "name": "Amina",
+        "text": "@meruertttka soo proud of youuu 🩷🩷🩷",
+        "len": 38
+      },
+      {
+        "name": "Albina",
+        "text": "@its_chingiz so proud of you!!! 🥳",
+        "len": 34
+      },
+      {
+        "name": "?",
+        "text": "Fr",
+        "len": 2
+      }
+    ],
+    "aiesec": [
+      {
+        "name": "AS",
+        "text": "HEY AIESEC! Более подробную информацию по тому как запрашивать Сonfirmation of Ethical Behaviour вы можете найти ниже! https://docs.google.com/presentation/d/1fUT7y8cPEEsaN-NsteP8FQqZR5rbiTRi_TlCFVbnV1M/edit?usp=sharing Should you have any questions feel free to ask them 🤍",
+        "len": 274
+      },
+      {
+        "name": "Dana",
+        "text": "me watching LCM getting cancelled because CEO Yeldar wanted to comfort Dimash",
+        "len": 77
+      },
+      {
+        "name": "Арухан",
+        "text": "Дорогой треш, как у вас дела? 🔥 Все помнят какой сегодня день недели??? В такой прекрасный день MXP приглашает вас на LCM!! Как говорил Рамчик, сегодня на LCMе что-то намечается, поэтому хотим попросить всех надеть удобную одежду 👀 Отдельный кредитс ту @nurvvi за такую красоту 😍 ⏳Time: 19:30 📍Room: 7e.529 ATTENDANCE IS MANDATORY! Если будете опаздывать или не сможете присутствовать, то предупредите своих VP/TL. Всех ждём! 🦊",
+        "len": 432
+      },
+      {
+        "name": "yelnur",
+        "text": "приветствую, локальный комитет объявляю об открытии формы на подачу заявок кейсов для Ethics Subcommittee - ФОРМА так же вы можете ее найти по ссылке в био профиля lc.astana в инстаграме. Если вас что-то тревожит, не бойтесь обращаться к LCP @its_chingiz или к LCVP F&L @everytimee7",
+        "len": 282
+      },
+      {
+        "name": "Арухан",
+        "text": "Салем, Треш🔥 И по традиции, MXP приглашает вас на LCM🫶🏻 Давайте все соберемся, пообщаемся и просто классно проведем время 💫 В честь праздника дресскод: красный, розовый и белый ❤️🩷🤍 Эскперт по аджендам @nurvvi 😍😍😍 ⏳ Time: 19:30 📍 Room: 7e.429 ATTENDANCE IS MANDATORY! Если будете опаздывать или не сможете прийти — обязательно предупредите своих VP/TL. Всех ждём! 🦊",
+        "len": 376
+      },
+      {
+        "name": "Арухан",
+        "text": "Привееет, треееш! Как ваши дела? 🫶🏻 Надеюсь, вы ждёте LCM так же, как новый фильм Человека-паука. MXP приглашает вас на долгожданный еженедельный LCM ‼️🥰 Сегодняшний LCM будет в онлайн-формате 🤗 Отдельный кредитс to @laqritsa за классную адженду 🕷️❤️‍🔥 ⏰Time: 19:30 📍Venue: Google Meet Attendance is mandatory! Если будете опаздывать или не сможете присутствовать, то предупредите своих VP/TL. Всех ждём! 🦊",
+        "len": 414
+      },
+      {
+        "name": "Аdeliya",
+        "text": "HEY AIESEC! MXP приглашает вас на долгожданный еженедельный LCM💃🏻 Сегодня будет очень интересная и полезная адженда, поэтому ждем абсолютно каждого! 🤩 💻LCM пройдет в онлайн-формате (поэтому все все готовим свои камеры и микрофоны!!!) ⏰Time: 19:30 📍Venue: Google Meet ❗️Attendance is mandatory Если будете опаздывать или не сможете присутствовать, то обязательно предупредите своих VP/TL Всех ждём! 🧡 P.S дроп адженды будет чуть позже🙂‍↕️",
+        "len": 444
+      },
+      {
+        "name": "Ramchik",
+        "text": "LCM в 8 сегодня?",
+        "len": 16
+      },
+      {
+        "name": "Beabayo",
+        "text": "ҚАЙЫРЛЫ КЕШ ТРЭШ😊😊😊 🔥🔥🔥🔥🔥🔥🔥🔥 🔥🔥🔥🔥🔥🔥🔥🔥 🔥🔥🔥🔥🔥🔥🔥🔥 🔥🔥🔥🔥🔥🔥🔥🔥 🏆В телеге AIESEC вышло пост AIESEC NEWS ⚡️⚡️ 🔜TГ👍 🔜ТЕЛЕГА👍 🔜ТЕЛЕГАМ👍 🔜ТЕЛЕГРАМ ПОСТ 👍 А девушка которая кукнула этот кайфовый тг пост @nazymiii 😘",
+        "len": 246
+      },
+      {
+        "name": "Chingiz Kakenov",
+        "text": "LCP and VP’s",
+        "len": 12
+      }
+    ],
+    "coordination": [
+      {
+        "name": "Меру",
+        "text": "Ну еще один гоу",
+        "len": 15
+      },
+      {
+        "name": "Nurkhat",
+        "text": "Гоу мхп мембер",
+        "len": 14
+      },
+      {
+        "name": "?",
+        "text": "гоу",
+        "len": 3
+      },
+      {
+        "name": "?",
+        "text": "Алпа и ты и гоу",
+        "len": 15
+      },
+      {
+        "name": "Anelle",
+        "text": "Гоу драка драка драка",
+        "len": 21
+      },
+      {
+        "name": "Anelle",
+        "text": "Урааа, гоу",
+        "len": 10
+      },
+      {
+        "name": "Nurkhat",
+        "text": "Треш гоу волейбол в 9",
+        "len": 21
+      },
+      {
+        "name": "?",
+        "text": "Срочно",
+        "len": 6
+      },
+      {
+        "name": "Nurkhat",
+        "text": "Поле возле скайволка гоу",
+        "len": 24
+      },
+      {
+        "name": "Anelle",
+        "text": "Гоу третий ОСП забашляет на тбшку",
+        "len": 33
+      },
+      {
+        "name": "Dana",
+        "text": "Карим, срочно, делай сальто назад",
+        "len": 33
+      },
+      {
+        "name": "?",
+        "text": "если срочно прям надо",
+        "len": 21
+      },
+      {
+        "name": "karim",
+        "text": "ждем круглы с ваших брекфастов кто еще не сделал",
+        "len": 48
+      },
+      {
+        "name": "?",
+        "text": "гоуте чекин",
+        "len": 11
+      },
+      {
+        "name": "Аdema Akylbekova",
+        "text": "Гоу кругл Айша",
+        "len": 14
+      }
+    ]
+  }
+}

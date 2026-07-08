@@ -6,7 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -33,32 +39,54 @@ function PromptsPage() {
 
   const create = useMutation({
     mutationFn: () => upsert({ data: { text, category, is_active: true, language } }),
-    onSuccess: () => { setText(""); refresh(); toast.success("Added"); },
+    onSuccess: () => {
+      setText("");
+      refresh();
+      toast.success("Added");
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
   const toggle = useMutation({
-    mutationFn: (p: any) => upsert({ data: { id: p.id, text: p.text, category: p.category, language: p.language ?? "en", is_active: !p.is_active } }),
+    mutationFn: (p: any) =>
+      upsert({
+        data: {
+          id: p.id,
+          text: p.text,
+          category: p.category,
+          language: p.language ?? "en",
+          is_active: !p.is_active,
+        },
+      }),
     onSuccess: refresh,
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => del({ data: { id } }),
-    onSuccess: () => { refresh(); toast.success("Deleted"); },
+    onSuccess: () => {
+      refresh();
+      toast.success("Deleted");
+    },
   });
 
-  const visible = (data ?? []).filter((p: any) => filter === "all" || (p.language ?? "en") === filter);
+  const visible = (data ?? []).filter(
+    (p: any) => filter === "all" || (p.language ?? "en") === filter,
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Prompt library</h1>
-          <p className="text-muted-foreground">Conversation starters the bot will rotate through.</p>
+          <p className="text-muted-foreground">
+            Conversation starters the bot will rotate through.
+          </p>
         </div>
         <div className="w-40">
           <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All languages</SelectItem>
               <SelectItem value="en">English</SelectItem>
@@ -68,7 +96,9 @@ function PromptsPage() {
         </div>
       </div>
       <Card>
-        <CardHeader><CardTitle>Add a prompt</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>Add a prompt</CardTitle>
+        </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           <Input
             placeholder="What's a small win you had this week?"
@@ -83,7 +113,9 @@ function PromptsPage() {
             className="w-40"
           />
           <Select value={language} onValueChange={(v: any) => setLanguage(v)}>
-            <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="en">English</SelectItem>
               <SelectItem value="ru">Русский</SelectItem>
@@ -101,8 +133,12 @@ function PromptsPage() {
             <div className="flex-1">
               <p className={p.is_active ? "" : "text-muted-foreground line-through"}>{p.text}</p>
               <div className="flex gap-2 mt-1">
-                <Badge variant="secondary" className="text-xs">{p.category}</Badge>
-                <Badge variant="outline" className="text-xs uppercase">{p.language ?? "en"}</Badge>
+                <Badge variant="secondary" className="text-xs">
+                  {p.category}
+                </Badge>
+                <Badge variant="outline" className="text-xs uppercase">
+                  {p.language ?? "en"}
+                </Badge>
               </div>
             </div>
             <Button size="sm" variant="ghost" onClick={() => remove.mutate(p.id)}>

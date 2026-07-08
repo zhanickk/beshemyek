@@ -6,10 +6,14 @@ compatibility_flags = ["nodejs_compat"]
 # build time (see .output/server/wrangler.json after `npm run build`) — don't
 # set them here, Nitro will warn and ignore any value you put in this file.
 
-# Runs the scheduled icebreaker/prompt tick. Requires wiring a `scheduled()`
-# export in src/server.ts that calls the /api/public/hooks/prompt-tick logic.
-# [triggers]
-# crons = ["0 * * * *"]
+# Drives background behavior: prompts, engagement, game timers, shipping — every
+# minute; Tumba digest once a day at 18:00 UTC. Handled by plugins/bot-cron.ts
+# on Cloudflare's scheduled() trigger.
+[triggers]
+crons = ["* * * * *", "0 18 * * *"]
+
+[observability]
+enabled = true
 
 # Non-secret vars can go here; secrets (SUPABASE_SERVICE_ROLE_KEY, DEEPSEEK_API_KEY,
 # TELEGRAM_API_KEY) must be set with `wrangler secret put <NAME>` instead.

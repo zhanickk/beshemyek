@@ -37,6 +37,23 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   });
 }
 
+async function runScheduled(event: { cron?: string }) {
+  const { getAdmin } = await import("./lib/supabase-admin.server");
+  const { runFastTicks, runTumbaDigestTick } = await import("./lib/cron.server");
+  const { runPromptTick } = await import("./lib/prompt-tick.server");
+  const admin = getAdmin();
+
+  if (event.cron === "0 18 * * *") {
+    await runTumbaDigestTick(admin);
+    return;
+  }
+  // Default: the once-a-minute trigger drives prompt/engagement/game/shipping ticks.
+  await Promise.all([
+    runPromptTick(admin).catch((e) => console.error("prompt tick failed", e)),
+    runFastTicks(admin).catch((e) => console.error("fast ticks failed", e)),
+  ]);
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
@@ -50,5 +67,12 @@ export default {
         headers: { "content-type": "text/html; charset=utf-8" },
       });
     }
+  },
+  async scheduled(
+    event: { cron?: string },
+    _env: unknown,
+    ctx: { waitUntil: (p: Promise<unknown>) => void },
+  ) {
+    ctx.waitUntil(runScheduled(event).catch((error) => console.error("scheduled() failed", error)));
   },
 };

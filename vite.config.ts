@@ -26,5 +26,6 @@ export default defineConfig({
       deployConfig: true,
       nodeCompat: true,
     },
+    plugins: ["plugins/bot-cron.ts"],
   },
 });
