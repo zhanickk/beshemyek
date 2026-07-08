@@ -8,6 +8,19 @@ type ServerEntry = {
 };
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
+let botCommandsSynced = false;
+
+async function ensureBotCommands() {
+  if (botCommandsSynced) return;
+  botCommandsSynced = true;
+  try {
+    const { syncBotCommands } = await import("./lib/telegram.server");
+    await syncBotCommands();
+  } catch (e) {
+    botCommandsSynced = false;
+    console.error("ensureBotCommands failed", e);
+  }
+}
 
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {
@@ -56,6 +69,8 @@ async function runScheduled(event: { cron?: string }) {
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    const ctxWithWait = ctx as { waitUntil?: (p: Promise<unknown>) => void };
+    ctxWithWait.waitUntil?.(ensureBotCommands());
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);

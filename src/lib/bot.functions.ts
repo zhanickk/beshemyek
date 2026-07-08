@@ -208,8 +208,9 @@ export const setBotWebhook = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ url: z.string().url() }).parse(d))
   .handler(async ({ data, context }) => {
     await requireAdmin(context as any);
-    const { telegram } = await import("@/lib/telegram.server");
+    const { telegram, syncBotCommands } = await import("@/lib/telegram.server");
     const res = await telegram.setWebhook(data.url);
+    await syncBotCommands().catch((e) => console.error("syncBotCommands failed", e));
     return res;
   });
 

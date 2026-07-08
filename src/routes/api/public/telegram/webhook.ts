@@ -98,7 +98,7 @@ import { pickResponseMode, resolveResponseMode } from "@/lib/personality.server"
 import { buildChatStyleBlock, TRASH_CHAT_CHIME_IN_NOTE } from "@/lib/chat-style.server";
 import { buildChatHistoryContext } from "@/lib/chat-context.server";
 import { tryOrganicChimeIn } from "@/lib/engagement.server";
-import { handleCheckinMessage, startCheckin } from "@/lib/checkin.server";
+import { handleCheckinMessage, handleCheckinCallback, startCheckin } from "@/lib/checkin.server";
 import {
   DM_MENU,
   DM_MENU_TEXTS,
@@ -491,6 +491,12 @@ async function launchFeatureFromMenu(
       });
       return `${intro}\n${text}`;
     }
+    case "checkin": {
+      const r = await startCheckin(ctx.admin, chatRow.id, ctx.telegramChatId);
+      if ((r as any).alreadyActive) return "Чекин уже идёт — дождись эстафеты или ответов.";
+      if ((r as any).noMembers) return "Пока нет мемберов в базе для чекина.";
+      return null;
+    }
     case "excuse":
       return await generateExcuse("ru");
     default:
@@ -882,6 +888,37 @@ async function handleCallbackQuery(admin: ReturnType<typeof getAdmin>, cb: any) 
 
   if (data.startsWith("feat:")) {
     await handleFeaturesCallback(admin, cb, data);
+    return;
+  }
+
+  if (data.startsWith("checkin:")) {
+    const parts = data.split(":");
+    const sessionId = parts[1];
+    const choice = parts[2] as "a" | "b" | undefined;
+    const chatTelegramId = cb.message?.chat?.id;
+    if (!sessionId || !choice || (choice !== "a" && choice !== "b") || !chatTelegramId) {
+      await telegram.answerCallbackQuery(cb.id);
+      return;
+    }
+    const { data: chatRow } = await admin
+      .from("chats")
+      .select("id")
+      .eq("telegram_chat_id", chatTelegramId)
+      .maybeSingle();
+    if (!chatRow) {
+      await telegram.answerCallbackQuery(cb.id);
+      return;
+    }
+    await handleCheckinCallback(
+      admin,
+      chatRow.id,
+      chatTelegramId,
+      fromUser.id,
+      sessionId,
+      choice,
+      cb.id,
+      cb.message?.message_id,
+    );
     return;
   }
 

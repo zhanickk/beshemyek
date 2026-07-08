@@ -207,6 +207,26 @@ export async function tgCall<T = any>(endpoint: string, body: Record<string, unk
 
 export type InlineButton = { text: string; callback_data?: string; url?: string };
 
+/** Slash-menu in group chats — only /features so it appears first when typing "/". */
+export const GROUP_BOT_COMMANDS = [{ command: "features", description: "Меню функций бота" }] as const;
+
+export async function syncBotCommands() {
+  await tgCall("setMyCommands", {
+    commands: [...GROUP_BOT_COMMANDS],
+    scope: { type: "all_group_chats" },
+  });
+  await tgCall("setMyCommands", {
+    commands: [
+      { command: "features", description: "Меню функций бота" },
+      { command: "start", description: "Начать" },
+    ],
+    scope: { type: "all_private_chats" },
+  });
+  await tgCall("setMyCommands", {
+    commands: [{ command: "features", description: "Меню функций бота" }],
+  });
+}
+
 export function inlineKeyboard(rows: InlineButton[][]) {
   return { inline_keyboard: rows };
 }
@@ -304,6 +324,11 @@ export const telegram = {
         "my_chat_member",
         "callback_query",
       ],
+    }),
+  setMyCommands: (commands: { command: string; description: string }[], scope?: { type: string }) =>
+    tgCall("setMyCommands", {
+      commands,
+      ...(scope ? { scope } : {}),
     }),
   getWebhookInfo: () => tgCall("getWebhookInfo", {}),
   deleteWebhook: () => tgCall("deleteWebhook", {}),

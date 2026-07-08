@@ -1,9 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateText } from "ai";
 import { createDeepSeekProvider, getDeepSeekModel } from "@/lib/ai-gateway.server";
-import { telegram } from "@/lib/telegram.server";
+import { telegram, inlineKeyboard } from "@/lib/telegram.server";
 import { isFeatureEnabled } from "@/lib/features.server";
 import { buildChatStyleBlock } from "@/lib/chat-style.server";
+import { truncateBtn } from "@/lib/btn-label.server";
 
 export interface CheckinSession {
   id: string;
@@ -34,8 +35,23 @@ function formatCheckinPrompt(
     `🧠 <b>Чекин!</b> ${question}\n\n` +
     `🅰️ ${a}\n` +
     `🅱️ ${b}\n\n` +
-    `${tag}, что выбираешь? Напиши <b>А</b> или <b>Б</b> и коротко почему.`
+    `${tag}, жми кнопку ниже или напиши <b>А</b>/<b>Б</b> и коротко почему.`
   );
+}
+
+export function buildCheckinKeyboard(sessionId: string, optionA: string, optionB: string) {
+  return inlineKeyboard([
+    [
+      {
+        text: truncateBtn(`🅰️ ${optionA}`),
+        callback_data: `checkin:${sessionId}:a`,
+      },
+      {
+        text: truncateBtn(`🅱️ ${optionB}`),
+        callback_data: `checkin:${sessionId}:b`,
+      },
+    ],
+  ]);
 }
 
 async function generateCheckinQuestion(): Promise<{ question: string; a: string; b: string }> {
@@ -108,6 +124,25 @@ export async function getActiveCheckin(
   return (data as CheckinSession | null) ?? null;
 }
 
+async function sendCheckinPrompt(
+  admin: SupabaseClient,
+  session: CheckinSession,
+  telegramChatId: number,
+  tag: string,
+  prefix = "",
+) {
+  const body =
+    (prefix ? `${prefix}\n\n` : "") +
+    formatCheckinPrompt(session.question, session.option_a, session.option_b, tag);
+  const sent: any = await telegram.sendMessage(telegramChatId, body, {
+    reply_markup: buildCheckinKeyboard(session.id, session.option_a, session.option_b),
+  });
+  const messageId = sent?.result?.message_id;
+  if (messageId) {
+    await admin.from("checkin_sessions").update({ prompt_message_id: messageId }).eq("id", session.id);
+  }
+}
+
 export async function startCheckin(
   admin: SupabaseClient,
   chatId: string,
@@ -143,14 +178,7 @@ export async function startCheckin(
     .eq("telegram_user_id", target.telegram_user_id);
 
   await telegram.sendChatAction(telegramChatId, "typing");
-  const sent: any = await telegram.sendMessage(
-    telegramChatId,
-    formatCheckinPrompt(question, a, b, tag),
-  );
-  const messageId = sent?.result?.message_id;
-  if (messageId) {
-    await admin.from("checkin_sessions").update({ prompt_message_id: messageId }).eq("id", session!.id);
-  }
+  await sendCheckinPrompt(admin, session as CheckinSession, telegramChatId, tag);
 
   return { ok: true };
 }
@@ -185,36 +213,33 @@ function looksLikeCheckinAnswer(text: string): boolean {
   );
 }
 
-/** When tagged member answers — relay to next. */
-export async function handleCheckinMessage(
+async function relayCheckinAnswer(
   admin: SupabaseClient,
-  chatId: string,
+  session: CheckinSession,
   telegramChatId: number,
   fromUserId: number,
-  text: string,
-): Promise<boolean> {
-  if (!(await isFeatureEnabled(admin, chatId, "checkin"))) return false;
-  const session = await getActiveCheckin(admin, chatId);
-  if (!session) return false;
-  if (fromUserId !== session.target_user_id) return false;
-  if (session.answered_user_ids?.includes(fromUserId)) return false;
-  if (!looksLikeCheckinAnswer(text)) return false;
-
-  const choice = parseCheckinChoice(text) ?? session.pending_choice ?? "a";
+  choice: "a" | "b",
+  reasonText: string,
+  promptMessageId?: number | null,
+) {
   const pickedLabel = choice === "b" ? session.option_b : session.option_a;
-
   const answered = [...(session.answered_user_ids ?? []), fromUserId];
+
   await admin
     .from("chat_members")
     .update({ last_checkin_answered_at: new Date().toISOString() })
-    .eq("chat_id", chatId)
+    .eq("chat_id", session.chat_id)
     .eq("telegram_user_id", fromUserId);
+
+  if (promptMessageId) {
+    await telegram.editMessageReplyMarkup(telegramChatId, promptMessageId, undefined);
+  }
 
   const reactions = ["кайф выбор", "жиза", "ору", "логично", "спорно но ок", "база"];
   const react = reactions[Math.floor(Math.random() * reactions.length)];
-  const excerpt = text.trim().slice(0, 80) + (text.trim().length > 80 ? "…" : "");
+  const excerpt = reasonText.trim().slice(0, 80) + (reasonText.trim().length > 80 ? "…" : "");
 
-  const next = await pickCheckinTarget(admin, chatId, answered);
+  const next = await pickCheckinTarget(admin, session.chat_id, answered);
   if (!next) {
     await admin
       .from("checkin_sessions")
@@ -224,7 +249,7 @@ export async function handleCheckinMessage(
       telegramChatId,
       `${react}: <b>${pickedLabel}</b> — «${excerpt}». На сегодня чекин закрыт 🧠`,
     );
-    return true;
+    return;
   }
 
   const nextTag = memberTag(next);
@@ -244,17 +269,102 @@ export async function handleCheckinMessage(
   await admin
     .from("chat_members")
     .update({ last_checkin_tagged_at: new Date().toISOString() })
-    .eq("chat_id", chatId)
+    .eq("chat_id", session.chat_id)
     .eq("telegram_user_id", next.telegram_user_id);
 
-  const sent: any = await telegram.sendMessage(
+  const updated: CheckinSession = {
+    ...session,
+    answered_user_ids: answered,
+    target_user_id: next.telegram_user_id,
+    tagged_user_ids: tagged,
+  };
+  await sendCheckinPrompt(
+    admin,
+    updated,
     telegramChatId,
-    `${react}: <b>${pickedLabel}</b> — «${excerpt}»\n\n${formatCheckinPrompt(session.question, session.option_a, session.option_b, nextTag)}`,
+    nextTag,
+    `${react}: <b>${pickedLabel}</b> — «${excerpt}»`,
   );
-  const msgId = sent?.result?.message_id;
-  if (msgId) {
-    await admin.from("checkin_sessions").update({ prompt_message_id: msgId }).eq("id", session.id);
+}
+
+/** Inline button tap — A or B. */
+export async function handleCheckinCallback(
+  admin: SupabaseClient,
+  chatId: string,
+  telegramChatId: number,
+  fromUserId: number,
+  sessionId: string,
+  choice: "a" | "b",
+  callbackQueryId: string,
+  promptMessageId?: number | null,
+): Promise<void> {
+  if (!(await isFeatureEnabled(admin, chatId, "checkin"))) {
+    await telegram.answerCallbackQuery(callbackQueryId, "Чекин выключен в этом чате.", true);
+    return;
   }
+
+  const { data: sessionRow } = await admin
+    .from("checkin_sessions")
+    .select("*")
+    .eq("id", sessionId)
+    .eq("chat_id", chatId)
+    .eq("status", "active")
+    .maybeSingle();
+  const session = sessionRow as CheckinSession | null;
+  if (!session) {
+    await telegram.answerCallbackQuery(callbackQueryId, "Этот чекин уже завершён.", true);
+    return;
+  }
+  if (fromUserId !== session.target_user_id) {
+    await telegram.answerCallbackQuery(callbackQueryId, "Сейчас не твоя очередь 🙂", true);
+    return;
+  }
+  if (session.answered_user_ids?.includes(fromUserId)) {
+    await telegram.answerCallbackQuery(callbackQueryId, "Ты уже ответил(а)!", true);
+    return;
+  }
+
+  const pickedLabel = choice === "b" ? session.option_b : session.option_a;
+  await telegram.answerCallbackQuery(callbackQueryId, `Выбрал(а): ${pickedLabel}`);
+  await relayCheckinAnswer(
+    admin,
+    session,
+    telegramChatId,
+    fromUserId,
+    choice,
+    pickedLabel,
+    promptMessageId ?? session.prompt_message_id,
+  );
+}
+
+/** When tagged member answers by text — relay to next. */
+export async function handleCheckinMessage(
+  admin: SupabaseClient,
+  chatId: string,
+  telegramChatId: number,
+  fromUserId: number,
+  text: string,
+): Promise<boolean> {
+  if (!(await isFeatureEnabled(admin, chatId, "checkin"))) return false;
+  const session = await getActiveCheckin(admin, chatId);
+  if (!session) return false;
+  if (fromUserId !== session.target_user_id) return false;
+  if (session.answered_user_ids?.includes(fromUserId)) return false;
+
+  const choiceFromText = parseCheckinChoice(text);
+  if (session.pending_choice && !choiceFromText && text.trim().length < 4) return false;
+  if (!session.pending_choice && !looksLikeCheckinAnswer(text)) return false;
+
+  const choice = (choiceFromText ?? session.pending_choice ?? "a") as "a" | "b";
+  await relayCheckinAnswer(
+    admin,
+    session,
+    telegramChatId,
+    fromUserId,
+    choice,
+    text.trim() || (choice === "b" ? session.option_b : session.option_a),
+    session.prompt_message_id,
+  );
   return true;
 }
 

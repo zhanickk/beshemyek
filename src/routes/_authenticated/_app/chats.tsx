@@ -40,6 +40,8 @@ const FEATURE_LABELS: Record<string, string> = {
   ama: "🎤 AMA с EB",
   tumba: "🍬 Тумба",
   shipping: "💘 Шиперинг",
+  checkin: "🧠 Чекин А/Б",
+  prediction: "🔮 Предсказания",
   random_triggers: "🎲 Случайные вбросы",
   economy: "🪙 Экономика",
 };

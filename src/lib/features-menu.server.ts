@@ -112,13 +112,12 @@ export const MENU_BY_CATEGORY: Record<FeatureCategory, FeatureMenuItem[]> = {
     "quiz_duel",
   ].map((k) => gameItem(k as FeatureKey)),
   economy: ECONOMY_ITEMS,
-  social: [gameItem("tumba"), gameItem("ama"), gameItem("shipping")],
+  social: [gameItem("tumba"), gameItem("ama"), gameItem("shipping"), gameItem("checkin")],
   autopilot: [
     gameItem("random_triggers"),
     gameItem("word_reactions"),
     gameItem("prediction"),
     gameItem("excuse"),
-    gameItem("checkin"),
   ],
 };
 
@@ -154,11 +153,12 @@ const SOCIAL_DESC: Partial<Record<FeatureKey, string>> = {
   tumba: "Анонимные сахарки — пиши в личке бота, в чате выходит дайджестом.",
   ama: "Анонимные вопросы для EB — через личку бота.",
   shipping: "Бот намекает на пары в чате. /ship_optin чтобы участвовать.",
+  checkin: "Дилеммы «А или Б» — бот тегает мемберов по очереди, отвечай кнопкой или текстом.",
 };
 
 for (const item of MENU_BY_CATEGORY.social) {
   if (SOCIAL_DESC[item.featureKey]) item.desc = SOCIAL_DESC[item.featureKey]!;
-  if (item.id === "tumba" || item.id === "ama") item.launchable = true;
+  if (item.id === "tumba" || item.id === "ama" || item.id === "checkin") item.launchable = true;
   if (item.id === "shipping") item.launchable = true;
 }
 
@@ -185,6 +185,9 @@ export function buildFeaturesRootKeyboard(map: Record<FeatureKey, boolean>) {
   ];
   if (map.prediction) {
     rows.push([{ text: "🔮 Предсказания", callback_data: "feat:run:prediction" }]);
+  }
+  if (map.checkin) {
+    rows.push([{ text: "🧠 Чекин А/Б", callback_data: "feat:run:checkin" }]);
   }
   return inlineKeyboard(rows);
 }
@@ -229,6 +232,9 @@ export function buildFeaturesCategoryKeyboard(
   rows.push([{ text: "⬅️ Назад", callback_data: "feat:back" }]);
   if (category !== "autopilot" && map.prediction) {
     rows.push([{ text: "🔮 Предсказания", callback_data: "feat:run:prediction" }]);
+  }
+  if (category === "social" && map.checkin) {
+    rows.push([{ text: "🧠 Чекин А/Б", callback_data: "feat:run:checkin" }]);
   }
   return inlineKeyboard(rows);
 }
