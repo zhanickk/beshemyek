@@ -73,7 +73,11 @@ import { startArchetypeQuiz, handleArchetypeCallback } from "@/lib/games/archety
 import { startRedButton, handleRedButtonCallback } from "@/lib/games/red_button.server";
 import { startExcuseDuel, handleExcuseDuelCallback } from "@/lib/games/excuse_duel.server";
 import { startQuizDuel, handleQuizDuelCallback } from "@/lib/games/quiz_duel.server";
-import { generatePrediction } from "@/lib/prediction.server";
+import {
+  generatePrediction,
+  predictionMemberFromTg,
+  resolvePredictionTargets,
+} from "@/lib/prediction.server";
 import { detectGameIntent, type NaturalGameKey, type GameIntent } from "@/lib/games/intent.server";
 import { generateExcuse } from "@/lib/games/excuse.server";
 import { generateRoast } from "@/lib/games/roast.server";
@@ -198,8 +202,12 @@ async function handleDmMenuAction(
         await sendDmWithMenu(telegramUserId, "Предсказания выключены в твоём чате.");
         return;
       }
-      const text = await generatePrediction(tgDisplayName({ first_name: "ты" }));
-      await sendDmWithMenu(telegramUserId, `🔮 <b>Предсказание:</b>\n${text}`);
+      const { intro, text } = await generatePrediction({
+        admin,
+        chatId: chat.id,
+        invoker: predictionMemberFromTg({ id: telegramUserId, first_name: "ты" }),
+      });
+      await sendDmWithMenu(telegramUserId, `${intro}\n${text}`);
       return;
     }
     case DM_MENU.excuse: {
@@ -468,8 +476,16 @@ async function launchFeatureFromMenu(
       );
       return null;
     case "prediction": {
-      const text = await generatePrediction(invoker.name);
-      return `🔮 <b>Предсказание от Бешемека для ${invoker.name}:</b>\n${text}`;
+      const { intro, text } = await generatePrediction({
+        admin: ctx.admin,
+        chatId: chatRow.id,
+        invoker: {
+          telegram_user_id: invoker.id,
+          username: null,
+          display_name: invoker.name,
+        },
+      });
+      return `${intro}\n${text}`;
     }
     case "excuse":
       return await generateExcuse("ru");
@@ -1721,11 +1737,19 @@ async function handleGroupMessage(admin: ReturnType<typeof getAdmin>, message: T
     }
     if (cmd === "/prediction" && (await isFeatureEnabled(admin, chatRow.id, "prediction"))) {
       await telegram.sendChatAction(chatId, "typing");
-      const text = await generatePrediction(fromName);
-      await telegram.sendMessage(
-        chatId,
-        `🔮 <b>Предсказание от Бешемека для ${fromName}:</b>\n${text}`,
+      const targets = await resolvePredictionTargets(
+        admin,
+        chatRow.id,
+        message.reply_to_message?.from,
+        rest,
       );
+      const { intro, text } = await generatePrediction({
+        admin,
+        chatId: chatRow.id,
+        invoker: predictionMemberFromTg(message.from!),
+        targets: targets.length ? targets : undefined,
+      });
+      await telegram.sendMessage(chatId, `${intro}\n${text}`);
       return;
     }
     if (cmd === "/checkin" && (await isFeatureEnabled(admin, chatRow.id, "checkin"))) {
