@@ -1,4 +1,5 @@
-import { telegram, inlineKeyboard } from "@/lib/telegram.server";
+import { telegram, inlineKeyboard, tgDisplayName } from "@/lib/telegram.server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { awardCoins } from "@/lib/economy.server";
 import { truncateBtn } from "@/lib/keyboards.server";
 import {
@@ -27,12 +28,101 @@ const LABELS = {
   },
 };
 
+function memberLabel(
+  displayName?: string | null,
+  username?: string | null,
+  firstName?: string | null,
+  lastName?: string | null,
+): string | null {
+  const trimmed = displayName?.trim();
+  if (trimmed) return trimmed;
+  if (username) return `@${username}`;
+  const fromTg = tgDisplayName({ first_name: firstName ?? undefined, last_name: lastName ?? undefined, username: username ?? undefined });
+  return fromTg !== "кто-то" ? fromTg : null;
+}
+
+function extractFromUser(raw: unknown): {
+  first_name?: string;
+  last_name?: string;
+  username?: string;
+} | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const from =
+    (r.message as { from?: unknown } | undefined)?.from ??
+    (r.edited_message as { from?: unknown } | undefined)?.from ??
+    (r.callback_query as { from?: unknown } | undefined)?.from;
+  if (!from || typeof from !== "object") return null;
+  return from as { first_name?: string; last_name?: string; username?: string };
+}
+
+/** Prefer display name or @username; never show raw #telegram_user_id in buttons. */
+async function resolveMemberLabels(
+  admin: SupabaseClient,
+  chatId: string,
+  telegramChatId: number,
+  userIds: number[],
+): Promise<Map<number, string>> {
+  const uniq = [...new Set(userIds)];
+  const out = new Map<number, string>();
+  if (!uniq.length) return out;
+
+  const { data: members } = await admin
+    .from("chat_members")
+    .select("telegram_user_id, username, display_name")
+    .eq("chat_id", chatId)
+    .in("telegram_user_id", uniq);
+
+  for (const m of members ?? []) {
+    const label = memberLabel(m.display_name, m.username);
+    if (label) out.set(m.telegram_user_id, label);
+  }
+
+  let missing = uniq.filter((id) => !out.has(id));
+  if (missing.length) {
+    const { data: logs } = await admin
+      .from("messages_log")
+      .select("from_user_id, from_username, raw")
+      .eq("telegram_chat_id", telegramChatId)
+      .in("from_user_id", missing)
+      .order("created_at", { ascending: false })
+      .limit(missing.length * 5);
+
+    for (const row of logs ?? []) {
+      const uid = row.from_user_id;
+      if (!uid || out.has(uid)) continue;
+      const from = extractFromUser(row.raw);
+      const label = memberLabel(
+        null,
+        row.from_username ?? from?.username ?? null,
+        from?.first_name ?? null,
+        from?.last_name ?? null,
+      );
+      if (label) out.set(uid, label);
+    }
+  }
+
+  missing = uniq.filter((id) => !out.has(id));
+  for (const id of missing) {
+    try {
+      const res: any = await telegram.getChatMember(telegramChatId, id);
+      const label = memberLabel(null, res?.result?.user?.username, res?.result?.user?.first_name, res?.result?.user?.last_name);
+      if (label) out.set(id, label);
+    } catch {
+      // user may have left the chat
+    }
+  }
+
+  return out;
+}
+
 function memberName(m: {
   display_name?: string | null;
   username?: string | null;
   telegram_user_id: number;
+  resolved?: string;
 }) {
-  return m.display_name || (m.username ? `@${m.username}` : `#${m.telegram_user_id}`);
+  return m.resolved ?? memberLabel(m.display_name, m.username) ?? "Участник чата";
 }
 
 export async function startCringeGame(ctx: GameCtx, mode: CringeMode) {
@@ -49,9 +139,15 @@ export async function startCringeGame(ctx: GameCtx, mode: CringeMode) {
     .eq("chat_id", ctx.chatId)
     .limit(40);
 
-  const pool = (members ?? []).filter((m) => m.telegram_user_id !== entry.telegram_user_id);
+  const pool = (members ?? [])
+    .filter((m) => m.telegram_user_id !== entry.telegram_user_id)
+    .sort((a, b) => {
+      const aNamed = Number(!!(a.display_name?.trim() || a.username));
+      const bNamed = Number(!!(b.display_name?.trim() || b.username));
+      return bNamed - aNamed || Math.random() - 0.5;
+    });
   const distractorCount = Math.min(3, pool.length);
-  const distractors = pool.sort(() => Math.random() - 0.5).slice(0, distractorCount);
+  const distractors = pool.slice(0, distractorCount);
   const subjectMember = (members ?? []).find(
     (m) => m.telegram_user_id === entry.telegram_user_id,
   ) ?? {
@@ -59,7 +155,26 @@ export async function startCringeGame(ctx: GameCtx, mode: CringeMode) {
     username: null,
     display_name: null,
   };
-  const candidates = [subjectMember, ...distractors].sort(() => Math.random() - 0.5);
+  const labelMap = await resolveMemberLabels(
+    ctx.admin,
+    ctx.chatId,
+    ctx.telegramChatId,
+    [subjectMember.telegram_user_id, ...distractors.map((d) => d.telegram_user_id)],
+  );
+  const withLabels = (m: {
+    telegram_user_id: number;
+    username: string | null;
+    display_name: string | null;
+  }) => ({
+    ...m,
+    resolved: labelMap.get(m.telegram_user_id),
+  });
+  const subject = withLabels(subjectMember);
+  const distractorsLabeled = distractors
+    .map(withLabels)
+    .filter((c) => memberName(c) !== "Участник чата");
+  if (memberName(subject) === "Участник чата") return { noEntries: true as const };
+  const candidates = [subject, ...distractorsLabeled].sort(() => Math.random() - 0.5);
 
   if (candidates.length < 2) return { noEntries: true as const };
 
@@ -107,7 +222,7 @@ async function revealCringeAnswer(
 ) {
   const subjectId = String(session.state.subjectId);
   const subjectName =
-    session.state.candidates.find((c: any) => String(c.id) === subjectId)?.name ?? `#${subjectId}`;
+    session.state.candidates.find((c: any) => String(c.id) === subjectId)?.name ?? "Участник чата";
   const correct = pickedId === subjectId;
   if (correct) {
     await awardCoins(ctx.admin, ctx.chatId, voterId, 10, "game_win", {
@@ -149,7 +264,7 @@ export async function tickCringe(ctx: GameCtx, session: GameSession) {
   if (new Date(session.state.deadlineAt).getTime() > Date.now()) return;
   const subjectId = String(session.state.subjectId);
   const subjectName =
-    session.state.candidates.find((c: any) => String(c.id) === subjectId)?.name ?? `#${subjectId}`;
+    session.state.candidates.find((c: any) => String(c.id) === subjectId)?.name ?? "Участник чата";
   await finishSession(ctx.admin, session.id, session.state);
   const msgId = session.state.messageId;
   const body =
