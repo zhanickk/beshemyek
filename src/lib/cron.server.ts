@@ -13,7 +13,7 @@ import { tickAiesecQuiz } from "@/lib/games/aiesec_quiz.server";
 import { tickArchetypeQuiz } from "@/lib/games/archetype_quiz.server";
 import { tickShipping, runShippingStartTick } from "@/lib/shipping.server";
 import { runEngagementTick, tryOrganicChimeIn } from "@/lib/engagement.server";
-import { runCheckinTick } from "@/lib/checkin.server";
+import { runCheckinTick, tickCheckinTimeouts } from "@/lib/checkin.server";
 import { postTumbaDigest, runTumbaAccumulationTick } from "@/lib/tumba.server";
 import type { GameCtx, GameSession } from "@/lib/games/engine.server";
 import { isSessionDue } from "@/lib/timers.server";
@@ -83,6 +83,7 @@ export async function runFastTicks(admin: SupabaseClient) {
     tickShipping(admin).catch((e) => console.error("shipping tick failed", e)),
     runShippingStartTick(admin).catch((e) => console.error("shipping start tick failed", e)),
     runCheckinTick(admin).catch((e) => console.error("checkin tick failed", e)),
+    tickCheckinTimeouts(admin).catch((e) => console.error("checkin timeout tick failed", e)),
     runTumbaAccumulationTick(admin).catch((e) => console.error("tumba accumulation tick failed", e)),
   ]);
 }
@@ -146,5 +147,11 @@ export async function runDueTicksForChat(admin: SupabaseClient, chatId: string) 
     } catch (e) {
       console.error(`due tick failed ${session.id} (${session.type})`, e);
     }
+  }
+
+  try {
+    await tickCheckinTimeouts(admin, chatId);
+  } catch (e) {
+    console.error(`checkin timeout tick failed for chat ${chatId}`, e);
   }
 }

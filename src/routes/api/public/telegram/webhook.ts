@@ -359,8 +359,7 @@ async function launchFeatureFromMenu(
   invoker: { id: number; name: string; username?: string },
   itemId: FeatureMenuId,
 ): Promise<string | null> {
-  const activeMsg =
-    "Сейчас уже идёт другая игра, закончите её сначала (или EB может прервать через /endgame).";
+  const activeMsg = await activeGameBlockingMessage(ctx.admin, chatRow.id);
 
   switch (itemId) {
     case "mafia": {
@@ -512,7 +511,10 @@ async function launchFeatureFromMenu(
       return `${intro}\n${text}`;
     }
     case "checkin": {
-      const r = await startCheckin(ctx.admin, chatRow.id, ctx.telegramChatId);
+      const r = await startCheckin(ctx.admin, chatRow.id, ctx.telegramChatId, {
+        initiatorUserId: invoker.id,
+        waitUntil: ctx.waitUntil,
+      });
       if ((r as any).alreadyActive) return "Чекин уже идёт — дождись эстафеты или ответов.";
       if ((r as any).noMembers) return "Пока нет мемберов в базе для чекина.";
       return null;
@@ -664,6 +666,16 @@ async function canUseEndgame(
 ): Promise<boolean> {
   if (await allowMemberEndgame(admin, chatUuid)) return true;
   return isTelegramChatAdmin(chatId, userId);
+}
+
+async function activeGameBlockingMessage(
+  admin: ReturnType<typeof getAdmin>,
+  chatUuid: string,
+): Promise<string> {
+  if (await allowMemberEndgame(admin, chatUuid)) {
+    return "Сейчас уже идёт другая игра, закончите её сначала (или можете прервать через /endgame)";
+  }
+  return "Сейчас уже идёт другая игра, закончите её сначала (или EB может прервать через /endgame).";
 }
 
 // ── natural-language game start/end ("гоу в мафию поиграем" / "бот закончи игру") ──────────
@@ -954,6 +966,7 @@ async function handleCallbackQuery(
       choice,
       cb.id,
       cb.message?.message_id,
+      waitUntil,
     );
     return;
   }
@@ -1635,19 +1648,13 @@ async function handleGroupMessage(
     if (cmd === "/crocodile" && (await isFeatureEnabled(admin, chatRow.id, "crocodile"))) {
       const r = await startCrocodile(ctx, { id: message.from!.id, name: fromName });
       if ((r as any).alreadyActive)
-        await telegram.sendMessage(
-          chatId,
-          "Сейчас уже идёт другая игра, закончите её сначала (или EB может прервать через /endgame).",
-        );
+        await telegram.sendMessage(chatId, await activeGameBlockingMessage(admin, chatRow.id));
       return;
     }
     if (cmd === "/taboo" && (await isFeatureEnabled(admin, chatRow.id, "taboo"))) {
       const r = await startTaboo(ctx, { id: message.from!.id, name: fromName });
       if ((r as any).alreadyActive)
-        await telegram.sendMessage(
-          chatId,
-          "Сейчас уже идёт другая игра, закончите её сначала (или EB может прервать через /endgame).",
-        );
+        await telegram.sendMessage(chatId, await activeGameBlockingMessage(admin, chatRow.id));
       return;
     }
     if (
@@ -1656,19 +1663,13 @@ async function handleGroupMessage(
     ) {
       const r = await startTruthOrDare(ctx, { id: message.from!.id, name: fromName });
       if ((r as any).alreadyActive)
-        await telegram.sendMessage(
-          chatId,
-          "Сейчас уже идёт другая игра, закончите её сначала (или EB может прервать через /endgame).",
-        );
+        await telegram.sendMessage(chatId, await activeGameBlockingMessage(admin, chatRow.id));
       return;
     }
     if (cmd === "/mafia" && (await isFeatureEnabled(admin, chatRow.id, "mafia"))) {
       const r = await startMafiaLobby(ctx, { id: message.from!.id, name: fromName });
       if ((r as any).alreadyActive)
-        await telegram.sendMessage(
-          chatId,
-          "Сейчас уже идёт другая игра, закончите её сначала (или EB может прервать через /endgame).",
-        );
+        await telegram.sendMessage(chatId, await activeGameBlockingMessage(admin, chatRow.id));
       return;
     }
     if (cmd === "/cringe") {
@@ -1699,10 +1700,7 @@ async function handleGroupMessage(
     ) {
       const r = await startCringeGame(ctx, "cringe");
       if ((r as any).alreadyActive)
-        await telegram.sendMessage(
-          chatId,
-          "Сейчас уже идёт другая игра, закончите её сначала (или EB может прервать через /endgame).",
-        );
+        await telegram.sendMessage(chatId, await activeGameBlockingMessage(admin, chatRow.id));
       if ((r as any).noEntries)
         await telegram.sendMessage(
           chatId,
@@ -1713,10 +1711,7 @@ async function handleGroupMessage(
     if (cmd === "/who_said" && (await isFeatureEnabled(admin, chatRow.id, "who_said_this"))) {
       const r = await startCringeGame(ctx, "who_said");
       if ((r as any).alreadyActive)
-        await telegram.sendMessage(
-          chatId,
-          "Сейчас уже идёт другая игра, закончите её сначала (или EB может прервать через /endgame).",
-        );
+        await telegram.sendMessage(chatId, await activeGameBlockingMessage(admin, chatRow.id));
       if ((r as any).noEntries)
         await telegram.sendMessage(
           chatId,
@@ -1792,10 +1787,7 @@ async function handleGroupMessage(
     if (cmd === "/archetype" && (await isFeatureEnabled(admin, chatRow.id, "archetype_quiz"))) {
       const r = await startArchetypeQuiz(ctx, { id: message.from!.id, name: fromName });
       if ((r as any).alreadyActive)
-        await telegram.sendMessage(
-          chatId,
-          "Сейчас уже идёт другая игра, закончите её сначала (или EB может прервать через /endgame).",
-        );
+        await telegram.sendMessage(chatId, await activeGameBlockingMessage(admin, chatRow.id));
       if ((r as any).noQuestions)
         await telegram.sendMessage(chatId, "Пока нет вопросов для теста.");
       return;
@@ -1806,10 +1798,7 @@ async function handleGroupMessage(
     ) {
       const r = await startRedButton(ctx, { id: message.from!.id, name: fromName });
       if ((r as any).alreadyActive)
-        await telegram.sendMessage(
-          chatId,
-          "Сейчас уже идёт другая игра, закончите её сначала (или EB может прервать через /endgame).",
-        );
+        await telegram.sendMessage(chatId, await activeGameBlockingMessage(admin, chatRow.id));
       return;
     }
     if (
@@ -1818,10 +1807,7 @@ async function handleGroupMessage(
     ) {
       const r = await startExcuseDuel(ctx);
       if ((r as any).alreadyActive)
-        await telegram.sendMessage(
-          chatId,
-          "Сейчас уже идёт другая игра, закончите её сначала (или EB может прервать через /endgame).",
-        );
+        await telegram.sendMessage(chatId, await activeGameBlockingMessage(admin, chatRow.id));
       if ((r as any).notEnough)
         await telegram.sendMessage(
           chatId,
@@ -1832,10 +1818,7 @@ async function handleGroupMessage(
     if (cmd === "/duel" && (await isFeatureEnabled(admin, chatRow.id, "quiz_duel"))) {
       const r = await startQuizDuel(ctx, { id: message.from!.id, name: fromName });
       if ((r as any).alreadyActive)
-        await telegram.sendMessage(
-          chatId,
-          "Сейчас уже идёт другая игра, закончите её сначала (или EB может прервать через /endgame).",
-        );
+        await telegram.sendMessage(chatId, await activeGameBlockingMessage(admin, chatRow.id));
       if ((r as any).notEnough)
         await telegram.sendMessage(chatId, "Маловато вопросов в базе квиза для дуэли.");
       return;
@@ -1858,7 +1841,10 @@ async function handleGroupMessage(
       return;
     }
     if (cmd === "/checkin" && (await isFeatureEnabled(admin, chatRow.id, "checkin"))) {
-      const r = await startCheckin(admin, chatRow.id, chatId);
+      const r = await startCheckin(admin, chatRow.id, chatId, {
+        initiatorUserId: message.from!.id,
+        waitUntil,
+      });
       if ((r as any).alreadyActive)
         await telegram.sendMessage(chatId, "Чекин уже идёт — дождись эстафеты или ответов.");
       if ((r as any).noMembers)
@@ -2053,6 +2039,7 @@ async function handleGroupMessage(
       chatId,
       message.from.id,
       text,
+      waitUntil,
     );
     if (handled) return;
   }
