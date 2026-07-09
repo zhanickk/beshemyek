@@ -9,6 +9,7 @@ import { truncateBtn } from "@/lib/btn-label.server";
 const CHECKIN_RESPONSE_MS = 20_000;
 const CHECKIN_INTERVAL_MS = 6 * 3600 * 1000;
 const CHECKIN_TARGET_STALE_MS = 30 * 60 * 1000;
+const CHECKIN_MAX_PARTICIPANTS = 10;
 
 type WaitUntilFn = (p: Promise<unknown>) => void;
 
@@ -439,6 +440,18 @@ async function relayCheckinAnswer(
   const reactions = ["кайф выбор", "жиза", "ору", "логично", "спорно но ок", "база"];
   const react = reactions[Math.floor(Math.random() * reactions.length)];
   const excerpt = reasonText.trim().slice(0, 80) + (reasonText.trim().length > 80 ? "…" : "");
+
+  if (answered.length >= CHECKIN_MAX_PARTICIPANTS) {
+    await admin
+      .from("checkin_sessions")
+      .update({ status: "finished", answered_user_ids: answered, pending_choice: choice })
+      .eq("id", session.id);
+    await telegram.sendMessage(
+      telegramChatId,
+      `${react}: <b>${pickedLabel}</b> — «${excerpt}». ${CHECKIN_MAX_PARTICIPANTS} человек отметились — чекин закрыт 🧠`,
+    );
+    return;
+  }
 
   const next = await pickCheckinTarget(admin, session.chat_id, answered);
   if (!next) {
