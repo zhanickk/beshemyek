@@ -124,6 +124,23 @@ function scheduleDueTicks(admin: ReturnType<typeof getAdmin>, chatUuid: string) 
   void runDueTicksForChat(admin, chatUuid).catch((e) => console.error("due tick piggyback failed", e));
 }
 
+type WaitUntilFn = (promise: Promise<unknown>) => void;
+
+function extractWaitUntil(request: Request): WaitUntilFn | undefined {
+  const r = request as Request & { waitUntil?: WaitUntilFn };
+  return r.waitUntil ? r.waitUntil.bind(r) : undefined;
+}
+
+function gameCtx(
+  admin: ReturnType<typeof getAdmin>,
+  chatUuid: string,
+  telegramChatId: number,
+  lang: Lang,
+  waitUntil?: WaitUntilFn,
+): GameCtx {
+  return { admin, chatId: chatUuid, telegramChatId, lang, waitUntil };
+}
+
 async function sendDmWithMenu(chatId: number, text: string) {
   await telegram.sendMessage(chatId, text, { reply_markup: buildDmReplyKeyboard() });
 }
@@ -247,6 +264,7 @@ async function handleFeaturesCallback(
   admin: ReturnType<typeof getAdmin>,
   cb: any,
   data: string,
+  waitUntil?: WaitUntilFn,
 ) {
   const chatTelegramId = cb.message?.chat?.id;
   const messageId = cb.message?.message_id;
@@ -295,12 +313,7 @@ async function handleFeaturesCallback(
       return;
     }
     await telegram.answerCallbackQuery(cb.id, "Запускаю…");
-    const ctx: GameCtx = {
-      admin,
-      chatId: chatRow.id,
-      telegramChatId: chatTelegramId,
-      lang: "ru",
-    };
+    const ctx = gameCtx(admin, chatRow.id, chatTelegramId, "ru", waitUntil);
     const invoker = { id: fromUser.id, name: fromName, username: fromUser.username };
     const msg = await launchFeatureFromMenu(ctx, chatRow, invoker, itemId);
     if (msg) await telegram.sendMessage(chatTelegramId, msg);
@@ -728,6 +741,7 @@ async function handleGameIntent(
   chatId: number,
   intent: GameIntent,
   invoker: { id: number; name: string },
+  waitUntil?: WaitUntilFn,
 ) {
   if (!intent) return;
 
@@ -796,8 +810,9 @@ async function startNaturalGame(
   chatId: number,
   game: NaturalGameKey,
   invoker: { id: number; name: string },
+  waitUntil?: WaitUntilFn,
 ): Promise<string | null> {
-  const ctx: GameCtx = { admin, chatId: chatRow.id, telegramChatId: chatId, lang: "ru" };
+  const ctx = gameCtx(admin, chatRow.id, chatId, "ru", waitUntil);
 
   if (!(await isFeatureEnabled(admin, chatRow.id, NATURAL_GAME_FEATURE_KEY[game]))) {
     return "Эта игра сейчас выключена в этом чате, сорян.";
@@ -898,13 +913,17 @@ async function startNaturalGame(
 
 // ── callback_query dispatch ─────────────────────────────────────────────
 
-async function handleCallbackQuery(admin: ReturnType<typeof getAdmin>, cb: any) {
+async function handleCallbackQuery(
+  admin: ReturnType<typeof getAdmin>,
+  cb: any,
+  waitUntil?: WaitUntilFn,
+) {
   const data: string = cb.data ?? "";
   const fromUser: TgUser = cb.from;
   const fromName = tgDisplayName(fromUser);
 
   if (data.startsWith("feat:")) {
-    await handleFeaturesCallback(admin, cb, data);
+    await handleFeaturesCallback(admin, cb, data, waitUntil);
     return;
   }
 
@@ -1028,7 +1047,7 @@ async function handleCallbackQuery(admin: ReturnType<typeof getAdmin>, cb: any) 
   }
 
   if (data.startsWith("ngc:")) {
-    await handleNaturalGameCallback(admin, cb, data, fromUser, fromName);
+    await handleNaturalGameCallback(admin, cb, data, fromUser, fromName, waitUntil);
     return;
   }
 
@@ -1051,12 +1070,7 @@ async function handleCallbackQuery(admin: ReturnType<typeof getAdmin>, cb: any) 
     await telegram.answerCallbackQuery(cb.id);
     return;
   }
-  const ctx: GameCtx = {
-    admin,
-    chatId: session.chat_id,
-    telegramChatId: chatRow.telegram_chat_id,
-    lang: "ru",
-  };
+  const ctx = gameCtx(admin, session.chat_id, chatRow.telegram_chat_id, "ru", waitUntil);
   scheduleDueTicks(admin, session.chat_id);
 
   switch (session.type) {
@@ -1165,6 +1179,7 @@ async function handleNaturalGameCallback(
   data: string,
   fromUser: TgUser,
   fromName: string,
+  waitUntil?: WaitUntilFn,
 ) {
   const chatTelegramId = cb.message?.chat?.id;
   const messageId = cb.message?.message_id;
@@ -1235,7 +1250,7 @@ async function handleNaturalGameCallback(
     const resultText = await startNaturalGame(admin, chatRow, chatTelegramId, game, {
       id: fromUser.id,
       name: fromName,
-    });
+    }, waitUntil);
     if (resultText) await telegram.sendMessage(chatTelegramId, resultText);
     return;
   }
@@ -1433,7 +1448,11 @@ async function handlePrivateMessage(admin: ReturnType<typeof getAdmin>, message:
 
 // ── group message handling ───────────────────────────────────────────────
 
-async function handleGroupMessage(admin: ReturnType<typeof getAdmin>, message: TgMessage) {
+async function handleGroupMessage(
+  admin: ReturnType<typeof getAdmin>,
+  message: TgMessage,
+  waitUntil?: WaitUntilFn,
+) {
   const chatId = message.chat.id;
   const text = message.text ?? "";
 
@@ -1462,7 +1481,7 @@ async function handleGroupMessage(admin: ReturnType<typeof getAdmin>, message: T
     });
   }
 
-  const ctx: GameCtx = { admin, chatId: chatRow.id, telegramChatId: chatId, lang };
+  const ctx = gameCtx(admin, chatRow.id, chatId, lang, waitUntil);
   const botUsername = await import("@/lib/telegram.server").then((m) => m.getBotUsername());
 
   // Active game(s) consume plain (non-command) messages before anything else.
@@ -2086,7 +2105,7 @@ async function handleGroupMessage(admin: ReturnType<typeof getAdmin>, message: T
       await handleGameIntent(admin, chatRow, chatId, intent, {
         id: message.from.id,
         name: fromName,
-      });
+      }, waitUntil);
       return;
     }
   }
@@ -2122,7 +2141,7 @@ async function handleGroupMessage(admin: ReturnType<typeof getAdmin>, message: T
   }
 }
 
-async function handleUpdate(update: any) {
+async function handleUpdate(update: any, waitUntil?: WaitUntilFn) {
   const admin = getAdmin();
   const message: TgMessage | undefined = update.message ?? update.edited_message;
 
@@ -2142,7 +2161,7 @@ async function handleUpdate(update: any) {
   }
 
   if (update.callback_query) {
-    await handleCallbackQuery(admin, update.callback_query);
+    await handleCallbackQuery(admin, update.callback_query, waitUntil);
     return;
   }
 
@@ -2200,7 +2219,7 @@ async function handleUpdate(update: any) {
     return;
   }
 
-  await handleGroupMessage(admin, message);
+  await handleGroupMessage(admin, message, waitUntil);
 }
 
 export const Route = createFileRoute("/api/public/telegram/webhook")({
@@ -2211,8 +2230,9 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           return new Response("Unauthorized", { status: 401 });
         }
         const update = await request.json();
+        const waitUntil = extractWaitUntil(request);
         try {
-          await handleUpdate(update);
+          await handleUpdate(update, waitUntil);
         } catch (e) {
           // Always ack Telegram with 200 so it doesn't pile up retries; the
           // real error is logged server-side (visible in `wrangler tail`).

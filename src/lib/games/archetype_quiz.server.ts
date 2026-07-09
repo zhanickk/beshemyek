@@ -9,6 +9,7 @@ import {
   type GameCtx,
   type GameSession,
 } from "./engine.server";
+import { isSessionDue } from "@/lib/timers.server";
 
 const QUESTION_MS = 30 * 1000;
 
@@ -49,6 +50,23 @@ async function sendQuestion(
     questionMessageId,
     deadlineAt: new Date(Date.now() + QUESTION_MS).toISOString(),
   });
+  scheduleArchetypeDeadline(ctx, session.id);
+}
+
+function scheduleArchetypeDeadline(ctx: GameCtx, sessionId: string) {
+  const work = (async () => {
+    await new Promise((r) => setTimeout(r, QUESTION_MS + 250));
+    const { data: fresh } = await ctx.admin
+      .from("game_sessions")
+      .select("*")
+      .eq("id", sessionId)
+      .eq("type", "archetype_quiz")
+      .in("status", ["waiting", "active"])
+      .maybeSingle();
+    if (!fresh || !isSessionDue(fresh.state)) return;
+    await tickArchetypeQuiz(ctx, fresh as GameSession);
+  })().catch((e) => console.error("archetype deadline failed", e));
+  if (ctx.waitUntil) ctx.waitUntil(work);
 }
 
 export async function startArchetypeQuiz(ctx: GameCtx, invoker: { id: number; name: string }) {

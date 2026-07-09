@@ -43,6 +43,7 @@ export interface GameCtx {
   chatId: string; // internal uuid (chats.id)
   telegramChatId: number;
   lang: Lang;
+  waitUntil?: (promise: Promise<unknown>) => void;
 }
 
 const CODE_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
