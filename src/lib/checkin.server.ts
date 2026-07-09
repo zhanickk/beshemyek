@@ -8,6 +8,7 @@ import { truncateBtn } from "@/lib/btn-label.server";
 
 const CHECKIN_RESPONSE_MS = 20_000;
 const CHECKIN_INTERVAL_MS = 6 * 3600 * 1000;
+const CHECKIN_TARGET_STALE_MS = 30 * 60 * 1000;
 
 type WaitUntilFn = (p: Promise<unknown>) => void;
 
@@ -153,8 +154,20 @@ export async function getActiveCheckin(
   return (data as CheckinSession | null) ?? null;
 }
 
+function effectiveTaggedAt(session: CheckinSession): number {
+  const raw = session.target_tagged_at ?? session.updated_at ?? session.created_at;
+  return raw ? new Date(raw).getTime() : 0;
+}
+
+export function isCheckinSessionStale(session: CheckinSession, now = Date.now()): boolean {
+  const created = session.created_at ? new Date(session.created_at).getTime() : 0;
+  if (created > 0 && now - created >= CHECKIN_INTERVAL_MS) return true;
+  const taggedAt = effectiveTaggedAt(session);
+  return taggedAt > 0 && now - taggedAt >= CHECKIN_TARGET_STALE_MS;
+}
+
 function isCheckinResponseDue(session: CheckinSession, now = Date.now()): boolean {
-  const taggedAt = session.target_tagged_at ? new Date(session.target_tagged_at).getTime() : 0;
+  const taggedAt = effectiveTaggedAt(session);
   return taggedAt > 0 && now >= taggedAt + CHECKIN_RESPONSE_MS;
 }
 
@@ -163,6 +176,35 @@ function nextRelayFrom(session: CheckinSession, revertedToUserId: number): numbe
   const idx = answered.indexOf(revertedToUserId);
   if (idx > 0) return answered[idx - 1];
   return session.initiator_user_id ?? null;
+}
+
+export async function expireStaleCheckinSessions(
+  admin: SupabaseClient,
+  chatId?: string,
+): Promise<number> {
+  let query = admin
+    .from("checkin_sessions")
+    .select("*, chats!inner(telegram_chat_id)")
+    .eq("status", "active");
+  if (chatId) query = query.eq("chat_id", chatId);
+
+  const { data } = await query;
+  let closed = 0;
+  for (const row of data ?? []) {
+    const session = row as CheckinSession;
+    if (!isCheckinSessionStale(session)) continue;
+    await admin.from("checkin_sessions").update({ status: "finished" }).eq("id", session.id);
+    try {
+      await telegram.sendMessage(
+        (row as any).chats.telegram_chat_id as number,
+        "⏱ чекин завис — закрываем. Запусти новый через /checkin или подожди авто-чекин 🧠",
+      );
+    } catch (e) {
+      console.error(`checkin stale close notify failed for ${session.id}`, e);
+    }
+    closed++;
+  }
+  return closed;
 }
 
 function scheduleCheckinDeadline(
@@ -239,17 +281,20 @@ export async function processCheckinTimeout(
 }
 
 export async function tickCheckinTimeouts(admin: SupabaseClient, chatId?: string) {
+  await expireStaleCheckinSessions(admin, chatId);
+
   let query = admin
     .from("checkin_sessions")
-    .select("id, chat_id, target_tagged_at, chats!inner(telegram_chat_id)")
-    .eq("status", "active")
-    .not("target_tagged_at", "is", null)
-    .lte("target_tagged_at", new Date(Date.now() - CHECKIN_RESPONSE_MS).toISOString());
+    .select("id, chat_id, target_tagged_at, updated_at, created_at, chats!inner(telegram_chat_id)")
+    .eq("status", "active");
 
   if (chatId) query = query.eq("chat_id", chatId);
 
-  const { data: due } = await query;
-  for (const row of due ?? []) {
+  const { data: active } = await query;
+  const now = Date.now();
+  for (const row of active ?? []) {
+    const session = row as CheckinSession;
+    if (!isCheckinResponseDue(session, now)) continue;
     try {
       await processCheckinTimeout(
         admin,
@@ -288,7 +333,13 @@ export async function startCheckin(
   opts?: { initiatorUserId?: number; waitUntil?: WaitUntilFn },
 ): Promise<{ ok: true } | { noMembers: true } | { alreadyActive: true }> {
   const existing = await getActiveCheckin(admin, chatId);
-  if (existing) return { alreadyActive: true };
+  if (existing) {
+    if (isCheckinSessionStale(existing)) {
+      await admin.from("checkin_sessions").update({ status: "finished" }).eq("id", existing.id);
+    } else {
+      return { alreadyActive: true };
+    }
+  }
 
   const excludeIds = opts?.initiatorUserId ? [opts.initiatorUserId] : [];
   let target = await pickCheckinTarget(admin, chatId, excludeIds);
@@ -530,6 +581,8 @@ export async function handleCheckinMessage(
 
 export async function runCheckinTick(admin: SupabaseClient) {
   const now = Date.now();
+  await expireStaleCheckinSessions(admin);
+
   const hourUtc = new Date().getUTCHours();
   if (hourUtc < 4 || hourUtc >= 18) return;
 
@@ -550,13 +603,7 @@ export async function runCheckinTick(admin: SupabaseClient) {
       if (nextAt && now < nextAt) continue;
 
       const active = await getActiveCheckin(admin, chat.id);
-      if (active) {
-        const age = active.created_at ? now - new Date(active.created_at).getTime() : 0;
-        if (age >= CHECKIN_INTERVAL_MS) {
-          await admin.from("checkin_sessions").update({ status: "finished" }).eq("id", active.id);
-          await startCheckin(admin, chat.id, chat.telegram_chat_id);
-        }
-      } else {
+      if (!active) {
         await startCheckin(admin, chat.id, chat.telegram_chat_id);
       }
 
