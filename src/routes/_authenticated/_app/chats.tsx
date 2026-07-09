@@ -248,6 +248,21 @@ function ChatsPage() {
                   }
                 />
               </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>/endgame для всех</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Любой мембер может прервать игру через <code>/endgame</code>. Если выкл — только
+                    админы Telegram-чата (EB).
+                  </p>
+                </div>
+                <Switch
+                  checked={s.allow_member_endgame ?? false}
+                  onCheckedChange={(v) =>
+                    updateMut.mutate({ chat_id: chat.id, allow_member_endgame: v })
+                  }
+                />
+              </div>
               <div className="space-y-1">
                 <Label>Тишина до вброса (мин)</Label>
                 <Input

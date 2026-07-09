@@ -34,6 +34,7 @@ import {
   getActiveSessions,
   getBlockingSession,
   allowConcurrentGames,
+  allowMemberEndgame,
   getSessionByShortCode,
   parseCallback,
   cancelSession,
@@ -636,6 +637,16 @@ async function isTelegramChatAdmin(chatId: number, userId: number): Promise<bool
   }
 }
 
+async function canUseEndgame(
+  admin: ReturnType<typeof getAdmin>,
+  chatUuid: string,
+  chatId: number,
+  userId: number,
+): Promise<boolean> {
+  if (await allowMemberEndgame(admin, chatUuid)) return true;
+  return isTelegramChatAdmin(chatId, userId);
+}
+
 // ── natural-language game start/end ("гоу в мафию поиграем" / "бот закончи игру") ──────────
 
 const NATURAL_GAME_LABELS: Record<NaturalGameKey, string> = {
@@ -724,7 +735,7 @@ async function handleGameIntent(
     }
     await telegram.sendMessage(
       chatId,
-      `А вы точно хотите прервать игру «${GAME_LABELS[active.type]}»? Подтверди, только EB может.`,
+      `А вы точно хотите прервать игру «${GAME_LABELS[active.type]}»?`,
       {
         reply_markup: {
           inline_keyboard: [
@@ -1181,10 +1192,10 @@ async function handleNaturalGameCallback(
   }
 
   if (action === "ey") {
-    if (!(await isTelegramChatAdmin(chatTelegramId, fromUser.id))) {
+    if (!(await canUseEndgame(admin, chatRow.id, chatTelegramId, fromUser.id))) {
       await telegram.answerCallbackQuery(
         cb.id,
-        "Только админ чата (EB) может это подтвердить.",
+        "Прервать игру могут только админы чата (или включите /endgame для всех в дашборде).",
         true,
       );
       return;
@@ -1580,8 +1591,11 @@ async function handleGroupMessage(admin: ReturnType<typeof getAdmin>, message: T
     }
 
     if (cmd === "/endgame") {
-      if (!message.from || !(await isTelegramChatAdmin(chatId, message.from.id))) {
-        await telegram.sendMessage(chatId, "Прервать игру может только админ чата (EB).");
+      if (!message.from || !(await canUseEndgame(admin, chatRow.id, chatId, message.from.id))) {
+        await telegram.sendMessage(
+          chatId,
+          "Прервать игру могут только админы чата (EB). Включите «/endgame для всех» в дашборде, если хотите открыть всем.",
+        );
         return;
       }
       const active = await getActiveSession(admin, chatRow.id);

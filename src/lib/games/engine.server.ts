@@ -143,6 +143,18 @@ export async function allowConcurrentGames(
   return data?.allow_concurrent_games ?? false;
 }
 
+export async function allowMemberEndgame(
+  admin: SupabaseClient,
+  chatId: string,
+): Promise<boolean> {
+  const { data } = await admin
+    .from("bot_settings")
+    .select("allow_member_endgame")
+    .eq("chat_id", chatId)
+    .maybeSingle();
+  return data?.allow_member_endgame ?? false;
+}
+
 /** Returns an active session that blocks starting `forType` (respects dashboard toggle). */
 export async function getBlockingSession(
   admin: SupabaseClient,

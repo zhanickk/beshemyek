@@ -84,6 +84,7 @@ export const updateChatSettings = createServerFn({ method: "POST" })
         is_paused: z.boolean().optional(),
         silence_threshold_min: z.number().min(5).max(1440).optional(),
         allow_concurrent_games: z.boolean().optional(),
+        allow_member_endgame: z.boolean().optional(),
       })
       .parse(d),
   )

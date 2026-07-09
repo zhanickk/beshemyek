@@ -39,6 +39,7 @@ export type Database = {
         Row: {
           ai_replies_enabled: boolean;
           allow_concurrent_games: boolean;
+          allow_member_endgame: boolean;
           chat_id: string;
           id: string;
           ignored_pout_sent: boolean;
@@ -62,6 +63,7 @@ export type Database = {
         Insert: {
           ai_replies_enabled?: boolean;
           allow_concurrent_games?: boolean;
+          allow_member_endgame?: boolean;
           chat_id: string;
           id?: string;
           ignored_pout_sent?: boolean;
@@ -85,6 +87,7 @@ export type Database = {
         Update: {
           ai_replies_enabled?: boolean;
           allow_concurrent_games?: boolean;
+          allow_member_endgame?: boolean;
           chat_id?: string;
           id?: string;
           ignored_pout_sent?: boolean;
