@@ -69,8 +69,10 @@ async function runScheduled(event: { cron?: string }) {
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
-    const ctxWithWait = ctx as { waitUntil?: (p: Promise<unknown>) => void };
-    ctxWithWait.waitUntil?.(ensureBotCommands());
+    const syncCommands = ensureBotCommands();
+    const ctxWithWait = ctx as { waitUntil?: (p: Promise<unknown>) => void } | undefined;
+    if (ctxWithWait?.waitUntil) ctxWithWait.waitUntil(syncCommands);
+    else void syncCommands;
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
