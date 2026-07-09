@@ -5,9 +5,12 @@ import {
   finishSession,
   getBlockingSession,
   packCallback,
+  updateSessionState,
   type GameCtx,
   type GameSession,
 } from "./engine.server";
+
+const QUESTION_MS = 30 * 1000;
 
 const ARCHETYPE_DESCRIPTIONS: Record<string, string> = {
   лидер: "Ты прирождённый LCP — организуешь, ведёшь, вдохновляешь. 👑",
@@ -17,11 +20,15 @@ const ARCHETYPE_DESCRIPTIONS: Record<string, string> = {
   философ: "Ты философ движа — видишь смысл там, где другие видят KPI. 🧠",
 };
 
-async function sendQuestion(ctx: GameCtx, session: GameSession) {
-  const q = session.state.questions[session.state.currentIndex];
-  await telegram.sendMessage(
+async function sendQuestion(
+  ctx: GameCtx,
+  session: GameSession,
+  state: Record<string, unknown> = session.state,
+) {
+  const q = state.questions[state.currentIndex as number];
+  const sent: any = await telegram.sendMessage(
     ctx.telegramChatId,
-    `<b>Вопрос ${session.state.currentIndex + 1}/${session.state.questions.length}:</b> ${q.question}`,
+    `<b>Вопрос ${(state.currentIndex as number) + 1}/${(state.questions as unknown[]).length}:</b> ${q.question}`,
     {
       reply_markup: inlineKeyboard(
         q.options.map((opt: string, i: number) => {
@@ -36,6 +43,12 @@ async function sendQuestion(ctx: GameCtx, session: GameSession) {
       ),
     },
   );
+  const questionMessageId = sent?.result?.message_id;
+  await updateSessionState(ctx.admin, session.id, {
+    ...state,
+    questionMessageId,
+    deadlineAt: new Date(Date.now() + QUESTION_MS).toISOString(),
+  });
 }
 
 export async function startArchetypeQuiz(ctx: GameCtx, invoker: { id: number; name: string }) {
@@ -84,11 +97,17 @@ export async function handleArchetypeCallback(
   tally[tag] = (tally[tag] ?? 0) + 1;
   await telegram.answerCallbackQuery(callbackQueryId, "Принято!");
 
+  if (session.state.questionMessageId) {
+    await telegram.editMessageReplyMarkup(
+      ctx.telegramChatId,
+      session.state.questionMessageId,
+      undefined,
+    );
+  }
+
   const nextIndex = session.state.currentIndex + 1;
   if (nextIndex < session.state.questions.length) {
-    const state = { ...session.state, currentIndex: nextIndex, tally };
-    await ctx.admin.from("game_sessions").update({ state }).eq("id", session.id);
-    await sendQuestion(ctx, { ...session, state } as GameSession);
+    await sendQuestion(ctx, session, { ...session.state, currentIndex: nextIndex, tally });
     return;
   }
 
@@ -97,5 +116,23 @@ export async function handleArchetypeCallback(
   await telegram.sendMessage(
     ctx.telegramChatId,
     `🧪 <b>${session.state.invokerName}, твой архетип:</b>\n${ARCHETYPE_DESCRIPTIONS[topTag] ?? topTag}`,
+  );
+}
+
+export async function tickArchetypeQuiz(ctx: GameCtx, session: GameSession) {
+  if (!session.state.deadlineAt || new Date(session.state.deadlineAt).getTime() > Date.now()) return;
+  if (session.state.finished) return;
+
+  if (session.state.questionMessageId) {
+    await telegram.editMessageReplyMarkup(
+      ctx.telegramChatId,
+      session.state.questionMessageId,
+      undefined,
+    );
+  }
+  await finishSession(ctx.admin, session.id, { ...session.state, finished: true, timedOut: true });
+  await telegram.sendMessage(
+    ctx.telegramChatId,
+    `⏱ ${session.state.invokerName} не ответил(а) за 30 сек — архетип-тест завершён.`,
   );
 }

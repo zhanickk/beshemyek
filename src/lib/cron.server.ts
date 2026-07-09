@@ -10,6 +10,7 @@ import { tickRedButton } from "@/lib/games/red_button.server";
 import { tickExcuseDuel } from "@/lib/games/excuse_duel.server";
 import { tickQuizDuel } from "@/lib/games/quiz_duel.server";
 import { tickAiesecQuiz } from "@/lib/games/aiesec_quiz.server";
+import { tickArchetypeQuiz } from "@/lib/games/archetype_quiz.server";
 import { tickShipping, runShippingStartTick } from "@/lib/shipping.server";
 import { runEngagementTick, tryOrganicChimeIn } from "@/lib/engagement.server";
 import { runCheckinTick } from "@/lib/checkin.server";
@@ -57,6 +58,7 @@ export async function runGameTick(admin: SupabaseClient) {
       else if (session.type === "red_button") await tickRedButton(ctx, s);
       else if (session.type === "excuse_duel") await tickExcuseDuel(ctx, s);
       else if (session.type === "quiz_duel") await tickQuizDuel(ctx, s);
+      else if (session.type === "archetype_quiz") await tickArchetypeQuiz(ctx, s);
     } catch (e) {
       console.error(`game-tick failed for session ${session.id} (${session.type})`, e);
     }
@@ -133,6 +135,7 @@ export async function runDueTicksForChat(admin: SupabaseClient, chatId: string) 
       else if (session.type === "red_button") await tickRedButton(ctx, s);
       else if (session.type === "excuse_duel") await tickExcuseDuel(ctx, s);
       else if (session.type === "quiz_duel") await tickQuizDuel(ctx, s);
+      else if (session.type === "archetype_quiz") await tickArchetypeQuiz(ctx, s);
       else if (session.type === "mafia") {
         const full = { ...session, chats: { telegram_chat_id: chatRow.telegram_chat_id } };
         await tickMafiaSession(admin, full);

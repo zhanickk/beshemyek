@@ -7,6 +7,7 @@ import {
   resolveLang,
   detectLanguage,
   tgDisplayName,
+  tgUserMention,
   buildDeepLink,
   T,
   AIESEC_GLOSSARY,
@@ -300,7 +301,7 @@ async function handleFeaturesCallback(
       telegramChatId: chatTelegramId,
       lang: "ru",
     };
-    const invoker = { id: fromUser.id, name: fromName };
+    const invoker = { id: fromUser.id, name: fromName, username: fromUser.username };
     const msg = await launchFeatureFromMenu(ctx, chatRow, invoker, itemId);
     if (msg) await telegram.sendMessage(chatTelegramId, msg);
     return;
@@ -342,7 +343,7 @@ async function handleFeaturesCallback(
 async function launchFeatureFromMenu(
   ctx: GameCtx,
   chatRow: { id: string },
-  invoker: { id: number; name: string },
+  invoker: { id: number; name: string; username?: string },
   itemId: FeatureMenuId,
 ): Promise<string | null> {
   const activeMsg =
@@ -418,7 +419,12 @@ async function launchFeatureFromMenu(
     }
     case "balance": {
       const balance = await getBalance(ctx.admin, chatRow.id, invoker.id);
-      return `💰 У тебя ${balance} БешКоинов.`;
+      const mention = tgUserMention({
+        id: invoker.id,
+        username: invoker.username,
+        first_name: invoker.name,
+      });
+      return `💰 ${mention}, у тебя <b>${balance}</b> БешКоинов.`;
     }
     case "shop": {
       const { data: items } = await ctx.admin
@@ -1928,7 +1934,8 @@ async function handleGroupMessage(admin: ReturnType<typeof getAdmin>, message: T
     }
     if (cmd === "/balance") {
       const balance = await getBalance(admin, chatRow.id, message.from!.id);
-      await telegram.sendMessage(chatId, `💰 У тебя ${balance} БешКоинов.`);
+      const mention = tgUserMention(message.from);
+      await telegram.sendMessage(chatId, `💰 ${mention}, у тебя <b>${balance}</b> БешКоинов.`);
       return;
     }
     if (cmd === "/leaderboard") {

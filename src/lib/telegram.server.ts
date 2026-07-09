@@ -29,6 +29,24 @@ export function tgDisplayName(
   return name || (user.username ? `@${user.username}` : "кто-то");
 }
 
+/** Clickable @mention for group messages (username or tg://user link). */
+export function tgUserMention(
+  user?: {
+    id?: number;
+    username?: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
+  } | null,
+): string {
+  if (!user?.id) return "кто-то";
+  if (user.username) return `@${user.username}`;
+  const name = tgDisplayName(user)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  return `<a href="tg://user?id=${user.id}">${name}</a>`;
+}
+
 export function detectLanguage(text?: string | null, langCode?: string | null): Lang {
   if (text && /[\u0400-\u04FF]/.test(text)) return "ru";
   // This bot is Russian-first (AIESEC Astana chat). Only switch to English when there's a
