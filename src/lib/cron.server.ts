@@ -125,7 +125,10 @@ export async function runDueTicksForChat(admin: SupabaseClient, chatId: string) 
   };
 
   for (const session of sessions ?? []) {
-    if (!isSessionDue(session.state)) continue;
+    const isMafiaLobby =
+      session.type === "mafia" &&
+      (session.state as { phase?: string } | null)?.phase === "lobby";
+    if (!isSessionDue(session.state) && !isMafiaLobby) continue;
     const s = session as unknown as GameSession;
     try {
       if (session.type === "crocodile") await tickCrocodile(ctx, s);

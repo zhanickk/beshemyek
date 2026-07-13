@@ -16,6 +16,7 @@ export type NightActionType = "kill" | "heal" | "block" | "check" | "protect";
 export interface MafiaPlayer {
   id: number;
   name: string;
+  username?: string | null;
   role: MafiaRole;
   alive: boolean;
   maniacShield?: boolean;
@@ -73,6 +74,15 @@ export function isMafiaRole(role: MafiaRole): boolean {
   return role === "don" || role === "mafia";
 }
 
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+export function formatPlayerTag(p: Pick<MafiaPlayer, "id" | "name" | "username">): string {
+  const label = escapeHtml(p.name);
+  return `<a href="tg://user?id=${p.id}">${label}</a>`;
+}
+
 export function isEvilRole(role: MafiaRole): boolean {
   return isMafiaRole(role) || role === "maniac";
 }
@@ -91,6 +101,10 @@ export function resolveMafiaNightTarget(
   const mafiosi = alive.filter((p) => p.role === "mafia");
   const donVote = don ? mafiaVotes[String(don.id)] : undefined;
   const mafiaVote = mafiosi.map((m) => mafiaVotes[String(m.id)]).find((v) => v !== undefined);
+
+  if (!don && mafiosi.length === 1 && mafiaVote !== undefined) {
+    return { targetId: mafiaVote, attackerIds: [mafiosi[0].id] };
+  }
 
   if (donVote !== undefined) {
     const attackers = [don!.id, ...mafiosi.map((m) => m.id).filter((id) => mafiaVotes[String(id)] === donVote)];
@@ -177,7 +191,7 @@ export function resolveNight(input: NightInput): NightResult {
 
     if (protectedByDoctor.has(targetId)) {
       morningLines.push(
-        `🚑 На <b>${target.name}</b> было совершено нападение, но Доктор спас его!`,
+        `🚑 На ${formatPlayerTag(target)} было совершено нападение, но Доктор спас его!`,
       );
       continue;
     }
@@ -198,7 +212,7 @@ export function resolveNight(input: NightInput): NightResult {
       const bg = byId(bodyguardId)!;
       markDead(bodyguardId, "bodyguard");
       morningLines.push(
-        `💀 <b>${bg.name} (Телохранитель)</b> — героически погиб, защищая свою цель.`,
+        `💀 ${formatPlayerTag(bg)} (Телохранитель) — героически погиб, защищая свою цель.`,
       );
       continue;
     }
@@ -207,28 +221,28 @@ export function resolveNight(input: NightInput): NightResult {
 
     if (target.role === "kamikaze") {
       morningLines.push(
-        `💀 <b>${target.name} (Камикадзе)</b> — был убит, но активировал пояс смертника!`,
+        `💀 ${formatPlayerTag(target)} (Камикадзе) — был убит, но активировал пояс смертника!`,
       );
       for (const aid of attackerIds) {
         const atk = byId(aid);
         if (atk?.alive) {
           markDead(aid, "kamikaze_revenge", [targetId]);
-          morningLines.push(`🔥 В огне взрыва погиб: <b>${atk.name} (${ROLE_LABEL[atk.role]})</b>!`);
+          morningLines.push(`🔥 В огне взрыва погиб: ${formatPlayerTag(atk)} (${ROLE_LABEL[atk.role]})!`);
         }
       }
     } else {
       const killers = new Set(attackerIds.map((a) => byId(a)?.role).filter(Boolean));
       if (killers.has("commissar")) {
         morningLines.push(
-          `💀 <b>${target.name} (${ROLE_LABEL[target.role]})</b> — ликвидирован точным выстрелом правосудия.`,
+          `💀 ${formatPlayerTag(target)} (${ROLE_LABEL[target.role]}) — ликвидирован точным выстрелом правосудия.`,
         );
       } else if (killers.has("maniac")) {
         morningLines.push(
-          `💀 <b>${target.name} (${ROLE_LABEL[target.role]})</b> — ночью в его дом ворвался Маньяк.`,
+          `💀 ${formatPlayerTag(target)} (${ROLE_LABEL[target.role]}) — ночью в его дом ворвался Маньяк.`,
         );
       } else {
         morningLines.push(
-          `💀 <b>${target.name} (${ROLE_LABEL[target.role]})</b> — найден мёртвым. Мафия оставляет кровавые следы.`,
+          `💀 ${formatPlayerTag(target)} (${ROLE_LABEL[target.role]}) — найден мёртвым. Мафия оставляет кровавые следы.`,
         );
       }
     }
@@ -287,8 +301,8 @@ export function checkWin(players: MafiaPlayer[]): WinResult {
 
 /** Role distribution by player count (see product spec). */
 export function assignMafiaRoles(count: number): MafiaRole[] {
-  if (count < 6) {
-    throw new Error(`Mafia needs at least 6 players, got ${count}`);
+  if (count < 4) {
+    throw new Error(`Mafia needs at least 4 players, got ${count}`);
   }
 
   const roles: MafiaRole[] = [];
@@ -299,7 +313,11 @@ export function assignMafiaRoles(count: number): MafiaRole[] {
     for (let i = 1; i < n; i++) roles.push("mafia");
   };
 
-  if (count === 6) {
+  if (count === 4) {
+    roles.push("mafia", "doctor", "citizen", "citizen");
+  } else if (count === 5) {
+    roles.push("mafia", "doctor", "citizen", "citizen", "citizen");
+  } else if (count === 6) {
     // Город 4: Комиссар, Доктор, 2 Мирных | Мафия 2
     roles.push("commissar", "doctor", "citizen", "citizen");
     addMafia(2);
@@ -355,7 +373,9 @@ export function assignMafiaRoles(count: number): MafiaRole[] {
   return roles;
 }
 
-export function shuffleRoles(players: { id: number; name: string; alive: boolean }[]): MafiaPlayer[] {
+export function shuffleRoles(
+  players: { id: number; name: string; username?: string | null; alive: boolean }[],
+): MafiaPlayer[] {
   const roles = assignMafiaRoles(players.length).sort(() => Math.random() - 0.5);
   return players.map((p, i) => ({
     ...p,

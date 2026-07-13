@@ -46,7 +46,15 @@ function EconomyPage() {
 
   const { data: chats } = useQuery({ queryKey: ["chats"], queryFn: () => listChatsFn() });
   const [chatId, setChatId] = useState<string>("");
+  const [amountByUser, setAmountByUser] = useState<Record<number, string>>({});
   const activeChatId = chatId || chats?.[0]?.id || "";
+
+  const parseAmount = (userId: number) => {
+    const raw = amountByUser[userId]?.trim();
+    const n = raw ? Number(raw) : 10;
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return Math.floor(n);
+  };
 
   const { data: leaderboard } = useQuery({
     queryKey: ["leaderboard", activeChatId],
@@ -78,7 +86,9 @@ function EconomyPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Economy</h1>
-        <p className="text-muted-foreground">БешКоины leaderboard and shop items.</p>
+        <p className="text-muted-foreground">
+          БешКоины: введи сумму и жми +/− у нужного участника (себя найди в списке).
+        </p>
       </div>
 
       <Card>
@@ -119,25 +129,58 @@ function EconomyPage() {
                   <TableCell>{m.coins} 🪙</TableCell>
                   <TableCell>{m.streak_days}🔥</TableCell>
                   <TableCell>{m.role_tag}</TableCell>
-                  <TableCell className="text-right space-x-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        adjustMut.mutate({ telegram_user_id: m.telegram_user_id, delta: 10 })
-                      }
-                    >
-                      +10
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        adjustMut.mutate({ telegram_user_id: m.telegram_user_id, delta: -10 })
-                      }
-                    >
-                      -10
-                    </Button>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1 flex-wrap">
+                      <Input
+                        type="number"
+                        min={1}
+                        className="w-24 h-8"
+                        placeholder="Сумма"
+                        value={amountByUser[m.telegram_user_id] ?? ""}
+                        onChange={(e) =>
+                          setAmountByUser((prev) => ({
+                            ...prev,
+                            [m.telegram_user_id]: e.target.value,
+                          }))
+                        }
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={adjustMut.isPending}
+                        onClick={() => {
+                          const amount = parseAmount(m.telegram_user_id);
+                          if (amount === null) {
+                            toast.error("Введи положительное число");
+                            return;
+                          }
+                          adjustMut.mutate({
+                            telegram_user_id: m.telegram_user_id,
+                            delta: amount,
+                          });
+                        }}
+                      >
+                        +
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={adjustMut.isPending}
+                        onClick={() => {
+                          const amount = parseAmount(m.telegram_user_id);
+                          if (amount === null) {
+                            toast.error("Введи положительное число");
+                            return;
+                          }
+                          adjustMut.mutate({
+                            telegram_user_id: m.telegram_user_id,
+                            delta: -amount,
+                          });
+                        }}
+                      >
+                        −
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

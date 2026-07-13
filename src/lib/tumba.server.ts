@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateText } from "ai";
-import { telegram, inlineKeyboard, buildDeepLink } from "@/lib/telegram.server";
+import { telegram, inlineKeyboard, buildDeepLink, chatMemberTag } from "@/lib/telegram.server";
 import { createDeepSeekProvider, getDeepSeekModel } from "@/lib/ai-gateway.server";
 import { moderateText } from "@/lib/moderation.server";
 import { isFeatureEnabled } from "@/lib/features.server";
@@ -162,6 +162,68 @@ export async function handleTumbaCategoryChoice(
   );
 }
 
+async function lookupMemberByTarget(
+  admin: SupabaseClient,
+  chatId: string,
+  raw: string,
+): Promise<{ username: string | null; tag: string } | null> {
+  const trimmed = raw.trim().replace(/^@/, "");
+  if (!trimmed || trimmed.toLowerCase() === "всем") return null;
+
+  let member: {
+    telegram_user_id: number;
+    username: string | null;
+    display_name: string | null;
+  } | null = null;
+
+  if (/^\d+$/.test(trimmed)) {
+    const { data } = await admin
+      .from("chat_members")
+      .select("telegram_user_id, username, display_name")
+      .eq("chat_id", chatId)
+      .eq("telegram_user_id", Number(trimmed))
+      .maybeSingle();
+    member = data;
+  } else {
+    const { data: byUser } = await admin
+      .from("chat_members")
+      .select("telegram_user_id, username, display_name")
+      .eq("chat_id", chatId)
+      .ilike("username", trimmed)
+      .maybeSingle();
+    member = byUser;
+    if (!member) {
+      const { data: byName } = await admin
+        .from("chat_members")
+        .select("telegram_user_id, username, display_name")
+        .eq("chat_id", chatId)
+        .ilike("display_name", trimmed)
+        .maybeSingle();
+      member = byName;
+    }
+  }
+
+  if (!member) {
+    return { username: trimmed, tag: trimmed };
+  }
+  return {
+    username: member.username ?? trimmed,
+    tag: chatMemberTag(member),
+  };
+}
+
+async function resolveTargetTag(
+  admin: SupabaseClient,
+  chatId: string,
+  toUsername: string | null,
+): Promise<string> {
+  if (!toUsername) return "всем";
+  const found = await lookupMemberByTarget(admin, chatId, toUsername);
+  if (!found) return "всем";
+  if (found.tag.includes("<a href")) return found.tag;
+  return `@${found.tag}`;
+}
+
 function fallbackDigestFormat(
   items: Array<{ n: number; category: string; target: string; body: string }>,
 ): string {
@@ -174,6 +236,8 @@ function fallbackDigestFormat(
 }
 
 async function formatTumbaDigest(
+  admin: SupabaseClient,
+  chatId: string,
   messages: Array<{
     category: string;
     to_username: string | null;
@@ -181,12 +245,14 @@ async function formatTumbaDigest(
   }>,
 ): Promise<string> {
   const shuffled = shuffle(messages);
-  const items = shuffled.map((m, i) => ({
-    n: i + 1,
-    category: CATEGORY_LABELS[m.category as TumbaCategory] ?? m.category,
-    target: m.to_username ? `@${m.to_username}` : "всем",
-    body: m.body,
-  }));
+  const items = await Promise.all(
+    shuffled.map(async (m, i) => ({
+      n: i + 1,
+      category: CATEGORY_LABELS[m.category as TumbaCategory] ?? m.category,
+      target: await resolveTargetTag(admin, chatId, m.to_username),
+      body: m.body,
+    })),
+  );
 
   const key = process.env.DEEPSEEK_API_KEY;
   if (!key) return fallbackDigestFormat(items);
@@ -225,7 +291,7 @@ export async function postTumbaDigest(
   const { data: messages } = await q;
   if (!messages || messages.length === 0) return 0;
 
-  const body = await formatTumbaDigest(messages);
+  const body = await formatTumbaDigest(admin, chatId, messages);
   const res: any = await telegram.sendMessage(telegramChatId, body);
   const msgId = res?.result?.message_id;
   const replyBtn =
@@ -293,7 +359,8 @@ export async function handleTumbaDialogMessage(
 ): Promise<boolean> {
   const state = dialog.state;
   if (state.step === "target") {
-    const toUsername = text.trim().toLowerCase() === "всем" ? null : text.trim().replace(/^@/, "");
+    const resolved = await lookupMemberByTarget(admin, state.chatId, text);
+    const toUsername = resolved?.username ?? (text.trim().toLowerCase() === "всем" ? null : text.trim().replace(/^@/, ""));
     await admin
       .from("bot_dialogs")
       .update({ state: { ...state, toUsername, step: "body" } })

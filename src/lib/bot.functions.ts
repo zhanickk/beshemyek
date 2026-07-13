@@ -90,12 +90,35 @@ export const updateChatSettings = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await requireAdmin(context as any);
-    const { chat_id, ...patch } = data;
-    const { error } = await context.supabase
-      .from("bot_settings")
-      .update(patch)
-      .eq("chat_id", chat_id);
-    if (error) throw error;
+    const { chat_id, is_paused, ...rest } = data;
+
+    if (is_paused !== undefined) {
+      const [{ data: chat }, { data: settings }] = await Promise.all([
+        context.supabase
+          .from("chats")
+          .select("telegram_chat_id")
+          .eq("id", chat_id)
+          .maybeSingle(),
+        context.supabase.from("bot_settings").select("id").eq("chat_id", chat_id).maybeSingle(),
+      ]);
+      if (chat?.telegram_chat_id && settings?.id) {
+        const { setBotPausedState } = await import("@/lib/pause.server");
+        await setBotPausedState(context.supabase, {
+          settingsId: settings.id,
+          telegramChatId: chat.telegram_chat_id,
+          paused: is_paused,
+          silent: true,
+        });
+      }
+    }
+
+    if (Object.keys(rest).length > 0) {
+      const { error } = await context.supabase
+        .from("bot_settings")
+        .update(rest)
+        .eq("chat_id", chat_id);
+      if (error) throw error;
+    }
     return { ok: true };
   });
 
@@ -116,6 +139,56 @@ export const sendPromptNow = createServerFn({ method: "POST" })
       .from("bot_sends")
       .insert({ telegram_chat_id: data.telegram_chat_id, kind: "prompt", content: text });
     return { ok: true, text };
+  });
+
+export const sendBotChatMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        chat_id: z.string().uuid(),
+        instruction: z.string().min(1).max(2000),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context as any);
+    const { data: chat } = await context.supabase
+      .from("chats")
+      .select("telegram_chat_id")
+      .eq("id", data.chat_id)
+      .maybeSingle();
+    if (!chat?.telegram_chat_id) throw new Error("Chat not found");
+
+    const { telegram } = await import("@/lib/telegram.server");
+    const { generateText } = await import("ai");
+    const { createDeepSeekProvider, getDeepSeekModel } = await import("@/lib/ai-gateway.server");
+
+    let out = data.instruction.trim();
+    const key = process.env.DEEPSEEK_API_KEY;
+    if (key) {
+      try {
+        const provider = createDeepSeekProvider(key);
+        const { text } = await generateText({
+          model: provider(getDeepSeekModel()),
+          system: `Ты Beshemyek Bratan — бот локалки AIESEC. Админ просит отправить сообщение в групповой чат.
+Сформулируй короткое живое сообщение по его инструкции (напоминание, анонс, мотивашка и т.д.).
+Говори от первого лица бота. HTML: <b>, <i>. Без markdown. 1–4 предложения.`,
+          prompt: data.instruction.trim(),
+        });
+        if (text?.trim()) out = text.trim();
+      } catch (e) {
+        console.error("sendBotChatMessage AI failed", e);
+      }
+    }
+
+    await telegram.sendMessage(chat.telegram_chat_id, out);
+    await context.supabase.from("bot_sends").insert({
+      telegram_chat_id: chat.telegram_chat_id,
+      kind: "admin_broadcast",
+      content: out,
+    });
+    return { ok: true, text: out };
   });
 
 export const listActivity = createServerFn({ method: "GET" })
@@ -289,15 +362,32 @@ export const setChatFeature = createServerFn({ method: "POST" })
 export const setBotPaused = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z.object({ chat_id: z.string().uuid(), is_paused: z.boolean() }).parse(d),
+    z
+      .object({
+        chat_id: z.string().uuid(),
+        is_paused: z.boolean(),
+        silent: z.boolean().optional(),
+      })
+      .parse(d),
   )
   .handler(async ({ data, context }) => {
     await requireAdmin(context as any);
-    const { error } = await context.supabase
-      .from("bot_settings")
-      .update({ is_paused: data.is_paused })
-      .eq("chat_id", data.chat_id);
-    if (error) throw error;
+    const [{ data: chat }, { data: settings }] = await Promise.all([
+      context.supabase
+        .from("chats")
+        .select("telegram_chat_id")
+        .eq("id", data.chat_id)
+        .maybeSingle(),
+      context.supabase.from("bot_settings").select("id").eq("chat_id", data.chat_id).maybeSingle(),
+    ]);
+    if (!chat?.telegram_chat_id || !settings?.id) throw new Error("Chat not found");
+    const { setBotPausedState } = await import("@/lib/pause.server");
+    await setBotPausedState(context.supabase, {
+      settingsId: settings.id,
+      telegramChatId: chat.telegram_chat_id,
+      paused: data.is_paused,
+      silent: data.silent ?? false,
+    });
     return { ok: true };
   });
 

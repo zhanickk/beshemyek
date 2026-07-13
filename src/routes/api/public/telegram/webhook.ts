@@ -48,6 +48,7 @@ import {
   resendCrocodileWord,
   handleCrocodileMessage,
   handleCrocodileCallback,
+  handleCrocodilePrivateMessage,
 } from "@/lib/games/crocodile.server";
 import { startTaboo, resendTabooCard, handleTabooMessage, handleTabooCallback, handleTabooPrivateMessage } from "@/lib/games/taboo.server";
 import { startCringeGame, handleCringeCallback } from "@/lib/games/cringe.server";
@@ -55,6 +56,7 @@ import { startTruthOrDare, handleTruthOrDareCallback } from "@/lib/games/truth_o
 import {
   startMafiaLobby,
   resendMafiaRole,
+  joinMafiaFromDm,
   handleMafiaCallback,
   applyMafiaImmunityPurchase,
 } from "@/lib/games/mafia.server";
@@ -101,6 +103,10 @@ import { buildChatStyleBlock, TRASH_CHAT_CHIME_IN_NOTE } from "@/lib/chat-style.
 import { buildChatHistoryContext } from "@/lib/chat-context.server";
 import { tryOrganicChimeIn } from "@/lib/engagement.server";
 import { handleCheckinMessage, handleCheckinCallback, startCheckin } from "@/lib/checkin.server";
+import {
+  isStaleTelegramDate,
+  shouldDropGroupCallback,
+} from "@/lib/pause.server";
 import {
   DM_MENU,
   DM_MENU_TEXTS,
@@ -933,6 +939,18 @@ async function handleCallbackQuery(
   const data: string = cb.data ?? "";
   const fromUser: TgUser = cb.from;
   const fromName = tgDisplayName(fromUser);
+  const cbChatType = cb.message?.chat?.type;
+  const cbChatId = cb.message?.chat?.id;
+
+  if (
+    cbChatId &&
+    cbChatType &&
+    cbChatType !== "private" &&
+    (await shouldDropGroupCallback(admin, cbChatId, cb.message?.date))
+  ) {
+    await telegram.answerCallbackQuery(cb.id);
+    return;
+  }
 
   if (data.startsWith("feat:")) {
     await handleFeaturesCallback(admin, cb, data, waitUntil);
@@ -1117,6 +1135,7 @@ async function handleCallbackQuery(
       await handleMafiaCallback(ctx, session, parsed.action, parsed.payload, cb.id, {
         id: fromUser.id,
         name: fromName,
+        username: fromUser.username,
       });
       break;
     case "taboo":
@@ -1380,6 +1399,15 @@ async function handlePrivateMessage(admin: ReturnType<typeof getAdmin>, message:
     const prefix = sep === -1 ? payload : payload.slice(0, sep);
     const ref = sep === -1 ? "" : payload.slice(sep + 1);
 
+    if (prefix === "jm") {
+      await joinMafiaFromDm(admin, ref, {
+        id: telegramUserId,
+        name: fromName,
+        username: message.from?.username,
+      });
+      return;
+    }
+
     if (prefix === "mafia" || prefix === "croc" || prefix === "taboo") {
       const session = await getSessionByShortCode(admin, ref);
       if (!session) {
@@ -1445,6 +1473,10 @@ async function handlePrivateMessage(admin: ReturnType<typeof getAdmin>, message:
     return;
   }
 
+  if (text.trim() && (await handleCrocodilePrivateMessage(admin, telegramUserId, text))) {
+    return;
+  }
+
   if (dialog && text.trim()) {
     if (dialog.kind === "two_truths_submit") {
       const consumed = await handleTwoTruthsDialogMessage(admin, dialog, text, fromName);
@@ -1486,6 +1518,7 @@ async function handleGroupMessage(
   const fromName = tgDisplayName(message.from);
 
   if (settings?.is_paused) return;
+  if (isStaleTelegramDate(message.date, settings?.ignore_messages_before)) return;
 
   if (message.from && !message.from.is_bot) {
     await ensureMember(admin, chatRow.id, message.from.id, {
@@ -1527,104 +1560,6 @@ async function handleGroupMessage(
       await telegram.sendMessage(chatId, featuresRootText(map), {
         reply_markup: buildFeaturesRootKeyboard(map),
       });
-      return;
-    }
-    if (cmd === "/icebreaker") {
-      if (!(settings?.prompts_enabled ?? true)) return;
-      const { data: allPrompts } = await admin
-        .from("prompts")
-        .select("text,language")
-        .eq("is_active", true);
-      const filtered = (allPrompts ?? []).filter((p: any) => p.language === lang);
-      const pool = filtered.length > 0 ? filtered : (allPrompts ?? []);
-      const prompt = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)].text : null;
-      if (prompt) {
-        await telegram.sendMessage(chatId, `${T.icebreakerLabel[lang]}\n${prompt}`);
-        await admin
-          .from("bot_sends")
-          .insert({ telegram_chat_id: chatId, kind: "prompt", content: prompt });
-      }
-      return;
-    }
-    if (cmd === "/poll") {
-      if (!(settings?.polls_enabled ?? true)) return;
-      const parts = rest
-        .split("|")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      if (parts.length < 3) {
-        await telegram.sendMessage(chatId, T.pollUsage[lang]);
-        return;
-      }
-      const [question, ...options] = parts;
-      try {
-        const res: any = await telegram.sendPoll(chatId, question, options.slice(0, 10));
-        await admin.from("polls").insert({
-          telegram_chat_id: chatId,
-          telegram_poll_id: res?.result?.poll?.id ?? null,
-          telegram_message_id: res?.result?.message_id ?? null,
-          question,
-          options: options.slice(0, 10),
-          kind: "poll",
-        });
-        await admin
-          .from("bot_sends")
-          .insert({ telegram_chat_id: chatId, kind: "poll", content: question });
-      } catch (e: any) {
-        await telegram.sendMessage(chatId, `${T.pollFailed[lang]}${e.message}`);
-      }
-      return;
-    }
-    if (cmd === "/trivia") {
-      if (!(settings?.polls_enabled ?? true)) return;
-      try {
-        const key = process.env.DEEPSEEK_API_KEY!;
-        const provider = createDeepSeekProvider(key);
-        const { text: raw } = await generateText({
-          model: provider(getDeepSeekModel()),
-          system: T.triviaPrompt[lang],
-          prompt:
-            lang === "ru" ? "Сгенерируй один вопрос викторины." : "Generate one trivia question.",
-        });
-        const cleaned = raw.replace(/```json|```/g, "").trim();
-        const parsed = JSON.parse(cleaned);
-        const res: any = await telegram.sendPoll(chatId, `🎯 ${parsed.question}`, parsed.options, {
-          type: "quiz",
-          correct_option_id: parsed.correct,
-          is_anonymous: false,
-        });
-        await admin.from("polls").insert({
-          telegram_chat_id: chatId,
-          telegram_poll_id: res?.result?.poll?.id ?? null,
-          telegram_message_id: res?.result?.message_id ?? null,
-          question: parsed.question,
-          options: parsed.options,
-          correct_option: parsed.correct,
-          kind: "trivia",
-        });
-        await admin
-          .from("bot_sends")
-          .insert({ telegram_chat_id: chatId, kind: "trivia", content: parsed.question });
-      } catch (e: any) {
-        console.error(e);
-        await telegram.sendMessage(chatId, T.triviaFailed[lang]);
-      }
-      return;
-    }
-
-    if (cmd === "/pause" || cmd === "/unpause") {
-      if (!message.from || !(await isTelegramChatAdmin(chatId, message.from.id))) {
-        await telegram.sendMessage(chatId, "Эта команда только для админов чата (EB).");
-        return;
-      }
-      await admin
-        .from("bot_settings")
-        .update({ is_paused: cmd === "/pause" })
-        .eq("id", settings?.id);
-      await telegram.sendMessage(
-        chatId,
-        cmd === "/pause" ? "Молчу-молчу 🤐 (/unpause чтобы вернуть)" : "Я снова тут! 🎉",
-      );
       return;
     }
 

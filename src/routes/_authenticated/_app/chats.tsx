@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -7,6 +8,8 @@ import {
   sendPromptNow,
   listChatFeatures,
   setChatFeature,
+  setBotPaused,
+  sendBotChatMessage,
 } from "@/lib/bot.functions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -22,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Send } from "lucide-react";
+import { Moon, Send, Sun } from "lucide-react";
 
 const FEATURE_LABELS: Record<string, string> = {
   mafia: "🔪 Мафия",
@@ -88,10 +91,48 @@ export const Route = createFileRoute("/_authenticated/_app/chats")({
   component: ChatsPage,
 });
 
+function BotMessageSender({ chatId }: { chatId: string }) {
+  const send = useServerFn(sendBotChatMessage);
+  const [instruction, setInstruction] = useState("");
+  const mut = useMutation({
+    mutationFn: () => send({ data: { chat_id: chatId, instruction: instruction.trim() } }),
+    onSuccess: () => {
+      toast.success("Бот отправил сообщение в чат");
+      setInstruction("");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <div className="md:col-span-2 space-y-2 border rounded-lg px-3 py-3">
+      <Label>Сообщение через бота</Label>
+      <p className="text-xs text-muted-foreground">
+        Напиши, что отправить — Бешемьек сформулирует и кинет в чат. Например: «напомните про
+        собрание в 19:00» или «го на мафию сегодня вечером».
+      </p>
+      <Textarea
+        value={instruction}
+        onChange={(e) => setInstruction(e.target.value)}
+        rows={2}
+        placeholder="напомните про..."
+      />
+      <Button
+        size="sm"
+        disabled={!instruction.trim() || mut.isPending}
+        onClick={() => mut.mutate()}
+      >
+        <Send className="w-3 h-3 mr-2" />
+        Отправить в чат
+      </Button>
+    </div>
+  );
+}
+
 function ChatsPage() {
   const list = useServerFn(listChats);
   const update = useServerFn(updateChatSettings);
   const send = useServerFn(sendPromptNow);
+  const setPause = useServerFn(setBotPaused);
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({ queryKey: ["chats"], queryFn: () => list() });
@@ -101,6 +142,20 @@ function ChatsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["chats"] });
       toast.success("Saved");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const pauseMut = useMutation({
+    mutationFn: (vars: { chat_id: string; is_paused: boolean; silent: boolean }) =>
+      setPause({ data: vars }),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["chats"] });
+      if (vars.silent) {
+        toast.success(vars.is_paused ? "Тихая пауза включена" : "Тихая пауза выключена");
+      } else {
+        toast.success(vars.is_paused ? "Бот уснул — сообщение в чат" : "Бот проснулся — сообщение в чат");
+      }
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -227,11 +282,50 @@ function ChatsPage() {
                 </Select>
               </div>
               <div className="flex items-center justify-between">
-                <Label>Пауза (тихий режим)</Label>
+                <div>
+                  <Label>Тихая пауза</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Вкл/выкл без сообщений в чат.
+                  </p>
+                </div>
                 <Switch
                   checked={s.is_paused ?? false}
-                  onCheckedChange={(v) => updateMut.mutate({ chat_id: chat.id, is_paused: v })}
+                  disabled={pauseMut.isPending}
+                  onCheckedChange={(v) =>
+                    pauseMut.mutate({ chat_id: chat.id, is_paused: v, silent: true })
+                  }
                 />
+              </div>
+              <div className="md:col-span-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border rounded-lg px-3 py-3">
+                <div>
+                  <Label>Громкая пауза</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Сообщение в чат: «пошёл спатьки» / «проснулся, го играть». Только через дашборд.
+                  </p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={pauseMut.isPending || (s.is_paused ?? false)}
+                    onClick={() =>
+                      pauseMut.mutate({ chat_id: chat.id, is_paused: true, silent: false })
+                    }
+                  >
+                    <Moon className="w-3 h-3 mr-2" />
+                    Усыпить
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={pauseMut.isPending || !(s.is_paused ?? false)}
+                    onClick={() =>
+                      pauseMut.mutate({ chat_id: chat.id, is_paused: false, silent: false })
+                    }
+                  >
+                    <Sun className="w-3 h-3 mr-2" />
+                    Разбудить
+                  </Button>
+                </div>
               </div>
               <div className="flex items-center justify-between">
                 <div>
@@ -333,6 +427,9 @@ function ChatsPage() {
                   rows={2}
                   onBlur={(e) => updateMut.mutate({ chat_id: chat.id, tone: e.target.value })}
                 />
+              </div>
+              <div className="md:col-span-2">
+                <BotMessageSender chatId={chat.id} />
               </div>
               <div className="md:col-span-2">
                 <ChatFeatureToggles chatId={chat.id} />

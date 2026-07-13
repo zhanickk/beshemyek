@@ -47,6 +47,17 @@ export function tgUserMention(
   return `<a href="tg://user?id=${user.id}">${name}</a>`;
 }
 
+/** Clickable tag for chat_members rows (never shows raw #id). */
+export function chatMemberTag(m: {
+  telegram_user_id: number;
+  username?: string | null;
+  display_name?: string | null;
+}): string {
+  const raw = m.display_name?.trim() || m.username || "участник";
+  const label = raw.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return `<a href="tg://user?id=${m.telegram_user_id}">${label}</a>`;
+}
+
 export function detectLanguage(text?: string | null, langCode?: string | null): Lang {
   if (text && /[\u0400-\u04FF]/.test(text)) return "ru";
   // This bot is Russian-first (AIESEC Astana chat). Only switch to English when there's a
@@ -67,12 +78,12 @@ export function resolveLang(
 
 export const T = {
   help: {
-    ru: "Привет! Я Beshemyek Bratan 🤙\n\n<b>Общее</b>\n• /features — все мои функции и что включено\n• /icebreaker — вопрос для разговора\n• /checkin — чекин «А или Б» с тегами мемберов\n• /trivia — AI-викторина\n• /poll Вопрос | Опция1 | Опция2 — свой опрос\n• /predictions — предсказание от Бешемека (ответом/@user — для другого)\n\n<b>Игры</b>\n• /crocodile, /taboo, /truth_or_dare (/pod), /mafia\n• /cringe (ответом на сообщение), /whothis, /who_said\n• /quiz (/aiesec_quiz), /two_truths, /meme_of_day\n• /bet Вопрос | Опция1 | Опция2, /archetype, /excuse\n• /redbutton — красная кнопка (риск на коины)\n• /excuse_duel — дуэль отмазок, /duel — квиз-дуэль 1×1\n• /endgame — прервать текущую игру (для всех, если включено в дашборде)\n\n<b>Экономика</b>\n• /roast (ответом), /gift @user сумма, /shop, /balance, /leaderboard\n\n<b>Тумба / шиппинг</b>\n• /tumba, /ama, /ship_optin, /ship_optout\n\nУпомяните меня через @ или ответьте на моё сообщение — и я отвечу! Можно и просто сказать «го в мафию» или «бот, закончим игру».",
-    en: "Hi! I'm Beshemyek Bratan 🤙\n\n<b>General</b>\n• /features — all my features and what's on\n• /icebreaker — conversation starter\n• /checkin — A/B check-in with member tags\n• /trivia — AI trivia poll\n• /poll Question | Opt1 | Opt2 — custom poll\n• /predictions — Beshemyek's prediction (reply/@user for someone else)\n\n<b>Games</b>\n• /crocodile, /taboo, /truth_or_dare (/pod), /mafia\n• /cringe (reply to a message), /whothis, /who_said\n• /quiz (/aiesec_quiz), /two_truths, /meme_of_day\n• /bet Question | Opt1 | Opt2, /archetype, /excuse\n• /redbutton — red button (gamble coins)\n• /excuse_duel — excuse duel, /duel — 1×1 quiz duel\n• /endgame — cancel the current game (all members if enabled in dashboard)\n\n<b>Economy</b>\n• /roast (reply), /gift @user amount, /shop, /balance, /leaderboard\n\n<b>Tumba / shipping</b>\n• /tumba, /ama, /ship_optin, /ship_optout\n\n@mention me or reply to me and I'll chat back!",
+    ru: "Привет! Я Beshemyek Bratan 🤙\n\n<b>Общее</b>\n• /features — все мои функции и что включено\n• /checkin — чекин «А или Б» с тегами мемберов\n• /predictions — предсказание от Бешемека (ответом/@user — для другого)\n\n<b>Игры</b>\n• /crocodile, /taboo, /truth_or_dare (/pod), /mafia\n• /cringe (ответом на сообщение), /whothis, /who_said\n• /quiz (/aiesec_quiz), /two_truths, /meme_of_day\n• /bet Вопрос | Опция1 | Опция2, /archetype, /excuse\n• /redbutton — красная кнопка (риск на коины)\n• /excuse_duel — дуэль отмазок, /duel — квиз-дуэль 1×1\n• /endgame — прервать текущую игру (для всех, если включено в дашборде)\n\n<b>Экономика</b>\n• /roast (ответом), /gift @user сумма, /shop, /balance, /leaderboard\n\n<b>Тумба / шиппинг</b>\n• /tumba, /ama, /ship_optin, /ship_optout\n\nУпомяните меня через @ или ответьте на моё сообщение — и я отвечу! Можно и просто сказать «го в мафию» или «бот, закончим игру».",
+    en: "Hi! I'm Beshemyek Bratan 🤙\n\n<b>General</b>\n• /features — all my features and what's on\n• /checkin — A/B check-in with member tags\n• /predictions — Beshemyek's prediction (reply/@user for someone else)\n\n<b>Games</b>\n• /crocodile, /taboo, /truth_or_dare (/pod), /mafia\n• /cringe (reply to a message), /whothis, /who_said\n• /quiz (/aiesec_quiz), /two_truths, /meme_of_day\n• /bet Question | Opt1 | Opt2, /archetype, /excuse\n• /redbutton — red button (gamble coins)\n• /excuse_duel — excuse duel, /duel — 1×1 quiz duel\n• /endgame — cancel the current game (all members if enabled in dashboard)\n\n<b>Economy</b>\n• /roast (reply), /gift @user amount, /shop, /balance, /leaderboard\n\n<b>Tumba / shipping</b>\n• /tumba, /ama, /ship_optin, /ship_optout\n\n@mention me or reply to me and I'll chat back!",
   },
   welcome: {
-    ru: "👋 Привет всем! Я здесь, чтобы оживлять чат: вопросы для разговора, мини-опросы и дружеские ответы на упоминания. Попробуйте <code>/icebreaker</code>!",
-    en: "👋 Hey everyone! I'm here to keep the chat lively with conversation starters, mini-polls, and friendly replies when you @mention me. Try <code>/icebreaker</code> to start!",
+    ru: "👋 Привет всем! Я здесь, чтобы оживлять чат: игры, чекины и дружеские ответы на упоминания. Попробуйте <code>/features</code>!",
+    en: "👋 Hey everyone! I'm here to keep the chat lively with games, check-ins, and friendly replies when you @mention me. Try <code>/features</code>!",
   },
   icebreakerLabel: { ru: "💬 <b>Вопрос для разговора:</b>", en: "💬 <b>Icebreaker:</b>" },
   starterLabel: { ru: "💬 <b>Тема для общения:</b>", en: "💬 <b>Conversation starter:</b>" },
@@ -326,6 +337,10 @@ export const telegram = {
       ...extra,
     }).catch((e) => {
       console.error("editMessageText failed", e);
+    }),
+  deleteMessage: (chatId: number | string, messageId: number) =>
+    tgCall("deleteMessage", { chat_id: chatId, message_id: messageId }).catch((e) => {
+      console.error("deleteMessage failed", e);
     }),
   getChat: (chatId: number | string) => tgCall("getChat", { chat_id: chatId }),
   getChatMember: (chatId: number | string, userId: number) =>

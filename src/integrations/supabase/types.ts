@@ -43,6 +43,7 @@ export type Database = {
           chat_id: string;
           id: string;
           ignored_pout_sent: boolean;
+          ignore_messages_before: string | null;
           is_paused: boolean;
           language: string;
           last_bot_message_at: string | null;
@@ -67,6 +68,7 @@ export type Database = {
           chat_id: string;
           id?: string;
           ignored_pout_sent?: boolean;
+          ignore_messages_before?: string | null;
           is_paused?: boolean;
           language?: string;
           last_bot_message_at?: string | null;
@@ -91,6 +93,7 @@ export type Database = {
           chat_id?: string;
           id?: string;
           ignored_pout_sent?: boolean;
+          ignore_messages_before?: string | null;
           is_paused?: boolean;
           language?: string;
           last_bot_message_at?: string | null;

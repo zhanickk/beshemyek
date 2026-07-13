@@ -5,6 +5,7 @@ import { awardCoins, spendCoins } from "@/lib/economy.server";
 import {
   createSession,
   getBlockingSession,
+  getSessionByShortCode,
   packCallback,
   updateSessionState,
   finishSession,
@@ -23,16 +24,19 @@ import {
   checkWin,
   tallyVotes,
   isMafiaRole,
+  formatPlayerTag,
 } from "./mafia-engine.server";
 import { isSessionDue } from "@/lib/timers.server";
 
-const LOBBY_MS = 120 * 1000;
+const LOBBY_MS = 90 * 1000;
+const LOBBY_REMINDER_59_MS = 31 * 1000;
+const LOBBY_REMINDER_29_MS = 61 * 1000;
 const NIGHT_MS = 80 * 1000;
 const DAY_DISCUSS_MS = 75 * 1000;
 const DAY_VOTE_MS = 60 * 1000;
 const RUNOFF_MS = 30 * 1000;
 const KAMIKAZE_MS = 20 * 1000;
-const MIN_PLAYERS = 6;
+const MIN_PLAYERS = 4;
 const MAX_PLAYERS = 16;
 
 const WIN_REWARD = 25;
@@ -70,6 +74,10 @@ interface MafiaState {
   round: number;
   phaseDeadlineAt: string;
   lobbyMessageId?: number;
+  lobbyStartedAt?: string;
+  lobbyRemindersSent?: { at59?: boolean; at29?: boolean };
+  lobbyReminderMessageIds?: { at59?: number; at29?: number };
+  votePromptMessageId?: number;
   nightActions: {
     mafiaVotes: Record<string, number>;
     checks: Record<string, number>;
@@ -89,27 +97,25 @@ function serialState(state: MafiaState): Record<string, unknown> {
   return state as unknown as Record<string, unknown>;
 }
 
+function formatPlayerList(players: MafiaPlayer[]): string {
+  if (!players.length) return "—";
+  return players.map((p, i) => `${i + 1}. ${formatPlayerTag(p)}`).join("\n");
+}
+
 // ── lobby ────────────────────────────────────────────────────────────────
 
 function renderLobby(players: MafiaPlayer[]): string {
-  const list = players.length
-    ? players.map((p, i) => `${i + 1}. ${p.name}`).join("\n")
-    : "<i>пока никого</i>";
-  const need = Math.max(0, MIN_PLAYERS - players.length);
-  const status =
-    players.length >= MIN_PLAYERS
-      ? "Игроков достаточно — можно начинать!"
-      : `Нужно ещё минимум ${need} (роли зависят от числа игроков: от 6 — Комиссар/Доктор/Мафия, с 9 — Маньяк, с 11 — Камикадзе).`;
-  return `🔪 <b>Мафия — сбор игроков</b>\n\n<b>В игре (${players.length}/${MAX_PLAYERS}):</b>\n${list}\n\n${status}\nЖми «✅ Я в игре».`;
+  return `Ведётся набор в игру\n\nЗарегистрировались::\n${formatPlayerList(players)}\n\nИтого ${players.length} чел.`;
 }
 
-function lobbyKeyboard(shortCode: string) {
+async function lobbyKeyboard(shortCode: string) {
+  const joinUrl = await buildDeepLink(`jm_${shortCode}`);
+  const joinBtn = joinUrl
+    ? { text: "✅ Зайти в игру", url: joinUrl }
+    : { text: "✅ Зайти в игру", callback_data: packCallback(shortCode, "join") };
   return inlineKeyboard([
-    [
-      { text: "✅ Я в игре", callback_data: packCallback(shortCode, "join") },
-      { text: "🚪 Выйти", callback_data: packCallback(shortCode, "leave") },
-    ],
-    [{ text: "▶️ Начать сейчас", callback_data: packCallback(shortCode, "startnow") }],
+    [joinBtn],
+    [{ text: "🚪 Выйти", callback_data: packCallback(shortCode, "leave") }],
   ]);
 }
 
@@ -119,17 +125,97 @@ async function refreshLobby(ctx: GameCtx, session: GameSession, state: MafiaStat
     ctx.telegramChatId,
     state.lobbyMessageId,
     renderLobby(state.players),
-    { reply_markup: lobbyKeyboard(session.short_code) },
+    { reply_markup: await lobbyKeyboard(session.short_code) },
   );
+}
+
+async function joinMafiaPlayer(
+  ctx: GameCtx,
+  session: GameSession,
+  state: MafiaState,
+  user: { id: number; name: string; username?: string | null },
+): Promise<"ok" | "full" | "already" | "started"> {
+  if (state.phase !== "lobby") return "started";
+  if (state.players.some((p) => p.id === user.id)) return "already";
+  if (state.players.length >= MAX_PLAYERS) return "full";
+  const updated: MafiaPlayer[] = [
+    ...state.players,
+    {
+      id: user.id,
+      name: user.name,
+      username: user.username ?? null,
+      role: "citizen",
+      alive: true,
+    },
+  ];
+  const newState = { ...state, players: updated };
+  await updateSessionState(ctx.admin, session.id, serialState(newState));
+  try {
+    await telegram.sendMessage(user.id, "✅ Ты в игре.");
+  } catch {
+    // no-op
+  }
+  await refreshLobby(ctx, session, newState);
+  return "ok";
+}
+
+async function leaveMafiaPlayer(
+  ctx: GameCtx,
+  session: GameSession,
+  state: MafiaState,
+  userId: number,
+): Promise<"ok" | "not_in" | "started"> {
+  if (state.phase !== "lobby") return "started";
+  if (!state.players.some((p) => p.id === userId)) return "not_in";
+  const newState = { ...state, players: state.players.filter((p) => p.id !== userId) };
+  await updateSessionState(ctx.admin, session.id, serialState(newState));
+  try {
+    await telegram.sendMessage(userId, "❌ Ты не в игре.");
+  } catch {
+    // no-op
+  }
+  await refreshLobby(ctx, session, newState);
+  return "ok";
+}
+
+export async function joinMafiaFromDm(
+  admin: SupabaseClient,
+  shortCode: string,
+  user: { id: number; name: string; username?: string | null },
+) {
+  const session = await getSessionByShortCode(admin, shortCode);
+  if (!session || session.type !== "mafia") {
+    await telegram.sendMessage(user.id, "Игра не найдена или уже закончилась.");
+    return;
+  }
+  const { data: chatRow } = await admin
+    .from("chats")
+    .select("telegram_chat_id")
+    .eq("id", session.chat_id)
+    .maybeSingle();
+  const ctx: GameCtx = {
+    admin,
+    chatId: session.chat_id,
+    telegramChatId: chatRow?.telegram_chat_id ?? 0,
+    lang: "ru",
+  };
+  const state = session.state as MafiaState;
+  const result = await joinMafiaPlayer(ctx, session, state, user);
+  if (result === "already") {
+    await telegram.sendMessage(user.id, "Ты уже в игре.");
+  } else if (result === "full") {
+    await telegram.sendMessage(user.id, "Лобби заполнено.");
+  } else if (result === "started") {
+    await resendMafiaRole(admin, session, user.id);
+  }
 }
 
 export async function startMafiaLobby(ctx: GameCtx, invoker: { id: number; name: string }) {
   const existing = await getBlockingSession(ctx.admin, ctx.chatId, "mafia");
   if (existing) return { alreadyActive: true as const };
 
-  const players: MafiaPlayer[] = [
-    { id: invoker.id, name: invoker.name, role: "citizen", alive: true },
-  ];
+  const players: MafiaPlayer[] = [];
+  const lobbyStartedAt = new Date().toISOString();
   const session = await createSession(
     ctx.admin,
     ctx.chatId,
@@ -139,20 +225,24 @@ export async function startMafiaLobby(ctx: GameCtx, invoker: { id: number; name:
       players,
       round: 0,
       phaseDeadlineAt: new Date(Date.now() + LOBBY_MS).toISOString(),
+      lobbyStartedAt,
       nightActions: emptyNightActions(),
       dayVotes: {},
+      lobbyRemindersSent: {},
+      lobbyReminderMessageIds: {},
     } satisfies MafiaState,
     invoker.id,
     "waiting",
   );
 
   const sent: any = await telegram.sendMessage(ctx.telegramChatId, renderLobby(players), {
-    reply_markup: lobbyKeyboard(session.short_code),
+    reply_markup: await lobbyKeyboard(session.short_code),
   });
   const lobbyMessageId = sent?.result?.message_id;
   if (lobbyMessageId) {
     await updateSessionState(ctx.admin, session.id, { ...session.state, lobbyMessageId });
   }
+  scheduleMafiaLobbyTimers(ctx, session.id, session.short_code);
   return { session };
 }
 
@@ -162,11 +252,15 @@ function emptyNightActions(): MafiaState["nightActions"] {
 
 function roleIntro(player: MafiaPlayer, teammates: MafiaPlayer[]): string {
   const label = `${ROLE_EMOJI[player.role]} <b>${ROLE_LABEL[player.role]}</b>`;
+  const team = teammates.map((t) => formatPlayerTag(t)).join("\n") || "—";
   switch (player.role) {
     case "don":
-      return `${label}\nТы глава мафии. Голосуй за жертву и проверяй, кто Комиссар.\nПодельники: ${teammates.map((t) => t.name).join(", ") || "—"}`;
+      return `${label}\nТы глава мафии. Голосуй за жертву и проверяй, кто Комиссар.\nПодельники:\n${team}`;
     case "mafia":
-      return `${label}\nСогласуй с Доном цель на ночь.\nКоманда: ${teammates.map((t) => t.name).join(", ")}`;
+      if (!teammates.length) {
+        return `${label}\nТы мафия. Выбирай жертву ночью.`;
+      }
+      return `${label}\nСогласуй с Доном цель на ночь.\nКоманда:\n${team}`;
     case "commissar":
       return `${label}\nПроверяй игроков или стреляй в подозреваемых — одно действие за ночь.`;
     case "doctor":
@@ -291,9 +385,19 @@ export async function resendMafiaRole(
 // ── night / day flow ─────────────────────────────────────────────────────
 
 async function beginNight(ctx: GameCtx, session: GameSession, players: MafiaPlayer[], round: number) {
+  let baseState = session.state as MafiaState;
+  if (round === 1) {
+    const { data: fresh } = await ctx.admin
+      .from("game_sessions")
+      .select("state")
+      .eq("id", session.id)
+      .maybeSingle();
+    if (fresh?.state) baseState = fresh.state as MafiaState;
+  }
+
   const withRoles = round === 1 ? shuffleRoles(players) : players;
   const state: MafiaState = {
-    ...(session.state as MafiaState),
+    ...baseState,
     phase: "night",
     players: withRoles,
     round,
@@ -303,26 +407,21 @@ async function beginNight(ctx: GameCtx, session: GameSession, players: MafiaPlay
   };
   await updateSessionState(ctx.admin, session.id, serialState(state), "active");
 
-  if (round === 1 && state.lobbyMessageId) {
-    await telegram.editMessageReplyMarkup(ctx.telegramChatId, state.lobbyMessageId, undefined);
+  if (round === 1) {
+    await clearLobbyReminders(ctx, baseState);
+    if (baseState.lobbyMessageId) {
+      await telegram.deleteMessage(ctx.telegramChatId, baseState.lobbyMessageId);
+    }
   }
 
-  let anyFailed = false;
   const gameSession = { ...session, state } as GameSession;
   for (const p of withRoles.filter((x) => x.alive)) {
-    if (!(await sendRoleWithActions(ctx, gameSession, p))) anyFailed = true;
-  }
-  if (anyFailed) {
-    const link = await buildDeepLink(`mafia_${session.short_code}`);
-    await telegram.sendMessage(
-      ctx.telegramChatId,
-      `Некоторым не смог написать в личку 😅 ${link ? `Откройте: ${link} и жмите /start` : "Напишите мне /start в личку."}`,
-    );
+    await sendRoleWithActions(ctx, gameSession, p);
   }
 
   await telegram.sendMessage(
     ctx.telegramChatId,
-    `🌙 <b>Ночь ${round}.</b> Город засыпает. Роли действуют в личке (${NIGHT_MS / 1000}с). Не нажал — пропуск хода.`,
+    `🌙 <b>Ночь ${round}.</b> Город засыпает. Роли в личке (${NIGHT_MS / 1000}с).`,
   );
 }
 
@@ -407,7 +506,7 @@ async function resolveNightPhase(ctx: GameCtx, session: GameSession) {
   const alive = state2.players.filter((p) => p.alive);
   await telegram.sendMessage(
     ctx.telegramChatId,
-    `💬 <b>День.</b> Обсуждение ${DAY_DISCUSS_MS / 1000}с, потом голосование.\nЖивые (${alive.length}): ${alive.map((p) => p.name).join(", ")}`,
+    `💬 <b>День.</b> Обсуждение ${DAY_DISCUSS_MS / 1000}с, потом голосование.\nЖивые (${alive.length}):\n${alive.map((p) => formatPlayerTag(p)).join("\n")}`,
   );
 }
 
@@ -431,13 +530,17 @@ async function beginVote(ctx: GameCtx, session: GameSession, runoff?: number[]) 
   rows.push([
     { text: "Пропустить", callback_data: packCallback(session.short_code, "vote", "skip") },
   ]);
-  await telegram.sendMessage(
+  const sent: any = await telegram.sendMessage(
     ctx.telegramChatId,
     isRunoff
-      ? `🗳 <b>Второй тур!</b> Голосуем между: ${candidates.map((p) => p.name).join(" vs ")} (${RUNOFF_MS / 1000}с)`
-      : `🗳 <b>Голосование!</b> Кого выгоняем? (${DAY_VOTE_MS / 1000}с)`,
+      ? `🗳 <b>Второй тур!</b> (${RUNOFF_MS / 1000}с)\n${candidates.map((p) => formatPlayerTag(p)).join("\n")}`
+      : `🗳 <b>Голосование!</b> (${DAY_VOTE_MS / 1000}с)`,
     { reply_markup: inlineKeyboard(rows) },
   );
+  const votePromptMessageId = sent?.result?.message_id;
+  if (votePromptMessageId) {
+    await updateSessionState(ctx.admin, session.id, serialState({ ...state2, votePromptMessageId }));
+  }
 }
 
 async function beginKamikazeChoice(ctx: GameCtx, session: GameSession, kamikazeId: number) {
@@ -495,17 +598,26 @@ async function afterElimination(
   await beginNight(ctx, session, state.players, (state.round ?? 1) + 1);
 }
 
+async function clearVotePrompt(ctx: GameCtx, state: MafiaState) {
+  if (!state.votePromptMessageId) return;
+  await telegram.deleteMessage(ctx.telegramChatId, state.votePromptMessageId);
+}
+
 async function resolveVote(ctx: GameCtx, session: GameSession) {
   const state = session.state as MafiaState;
+  await clearVotePrompt(ctx, state);
   const { eliminatedId, tie, topIds } = tallyVotes(state.dayVotes, state.runoffCandidates);
 
   if (tie && state.phase === "day_vote" && topIds.length >= 2) {
+    const names = topIds
+      .slice(0, 2)
+      .map((id) => state.players.find((p) => p.id === id))
+      .filter(Boolean)
+      .map((p) => formatPlayerTag(p!))
+      .join("\n");
     await telegram.sendMessage(
       ctx.telegramChatId,
-      `Город не смог договориться. Второй тур между: ${topIds
-        .slice(0, 2)
-        .map((id) => state.players.find((p) => p.id === id)?.name)
-        .join(" и ")}.`,
+      `Город не смог договориться. Второй тур:\n${names}`,
     );
     await beginVote(ctx, session, topIds.slice(0, 2));
     return;
@@ -528,7 +640,7 @@ async function resolveVote(ctx: GameCtx, session: GameSession) {
     players = players.map((p) => (p.id === eliminatedId ? { ...p, alive: false } : p));
     await telegram.sendMessage(
       ctx.telegramChatId,
-      `⚖️ Казнён: <b>${eliminated.name}</b> — ${ROLE_EMOJI[eliminated.role]} ${ROLE_LABEL[eliminated.role]}.`,
+      `⚖️ Казнён:\n${formatPlayerTag(eliminated)} — ${ROLE_EMOJI[eliminated.role]} ${ROLE_LABEL[eliminated.role]}.`,
     );
   } else {
     await telegram.sendMessage(ctx.telegramChatId, "Сегодня никого не изгнали.");
@@ -567,7 +679,7 @@ async function endGame(
   const roster = state.players
     .map(
       (p) =>
-        `${p.alive ? "🟢" : "⚰️"} ${p.name} — ${ROLE_EMOJI[p.role]} ${ROLE_LABEL[p.role]}`,
+        `${p.alive ? "🟢" : "⚰️"} ${formatPlayerTag(p)} — ${ROLE_EMOJI[p.role]} ${ROLE_LABEL[p.role]}`,
     )
     .join("\n");
   await telegram.sendMessage(
@@ -584,63 +696,44 @@ export async function handleMafiaCallback(
   action: string,
   payload: string,
   callbackQueryId: string,
-  fromUser: { id: number; name: string },
+  fromUser: { id: number; name: string; username?: string | null },
 ) {
   const state = session.state as MafiaState;
 
   if (action === "join") {
-    if (state.phase !== "lobby") {
+    const result = await joinMafiaPlayer(ctx, session, state, fromUser);
+    if (result === "started") {
       await telegram.answerCallbackQuery(callbackQueryId, "Игра уже началась.", true);
       return;
     }
-    if (state.players.some((p) => p.id === fromUser.id)) {
+    if (result === "already") {
       await telegram.answerCallbackQuery(callbackQueryId, "Ты уже в игре!");
       return;
     }
-    if (state.players.length >= MAX_PLAYERS) {
+    if (result === "full") {
       await telegram.answerCallbackQuery(callbackQueryId, "Лобби заполнено.", true);
       return;
     }
-    const updated = [
-      ...state.players,
-      { id: fromUser.id, name: fromUser.name, role: "citizen" as MafiaRole, alive: true },
-    ];
-    const newState = { ...state, players: updated };
-    await updateSessionState(ctx.admin, session.id, serialState(newState));
-    await telegram.answerCallbackQuery(callbackQueryId, "Ты в игре! 🔪");
-    await refreshLobby(ctx, session, newState);
+    await telegram.answerCallbackQuery(callbackQueryId, "Ты в игре!");
     return;
   }
 
   if (action === "leave") {
-    if (state.phase !== "lobby") {
+    const result = await leaveMafiaPlayer(ctx, session, state, fromUser.id);
+    if (result === "started") {
       await telegram.answerCallbackQuery(callbackQueryId, "Из начавшейся игры уже не выйти.", true);
       return;
     }
-    const updated = state.players.filter((p) => p.id !== fromUser.id);
-    const newState = { ...state, players: updated };
-    await updateSessionState(ctx.admin, session.id, serialState(newState));
+    if (result === "not_in") {
+      await telegram.answerCallbackQuery(callbackQueryId, "Тебя нет в списке.");
+      return;
+    }
     await telegram.answerCallbackQuery(callbackQueryId, "Вышел из лобби.");
-    await refreshLobby(ctx, session, newState);
     return;
   }
 
   if (action === "startnow") {
-    if (state.phase !== "lobby") return;
-    if (session.created_by && fromUser.id !== session.created_by) {
-      await telegram.answerCallbackQuery(callbackQueryId, "Начать может только организатор.", true);
-      return;
-    }
-    if (state.players.length < MIN_PLAYERS) {
-      await telegram.answerCallbackQuery(
-        callbackQueryId,
-        `Нужно минимум ${MIN_PLAYERS} игроков.`,
-        true,
-      );
-      return;
-    }
-    await telegram.answerCallbackQuery(callbackQueryId, "Погнали!");
-    await beginNight(ctx, session, state.players, 1);
+    await telegram.answerCallbackQuery(callbackQueryId, "Набор закончится автоматически.", true);
     return;
   }
 
@@ -659,7 +752,7 @@ export async function handleMafiaCallback(
     await telegram.answerCallbackQuery(callbackQueryId, "💥 Бабах!");
     await telegram.sendMessage(
       ctx.telegramChatId,
-      `💥 <b>КАМИКАДЗЕ ЗАБИРАЕТ ЖЕРТВУ!</b>\n${kamikaze?.name} взорвался вместе с ${target?.name} (${ROLE_LABEL[target?.role ?? "citizen"]})!`,
+      `💥 <b>КАМИКАДЗЕ ЗАБИРАЕТ ЖЕРТВУ!</b>\n${kamikaze ? formatPlayerTag(kamikaze) : "—"} взорвался вместе с ${target ? formatPlayerTag(target) : "—"} (${ROLE_LABEL[target?.role ?? "citizen"]})!`,
     );
     const win = checkWin(players);
     if (win.winner) {
@@ -750,6 +843,15 @@ export async function handleMafiaCallback(
     await updateSessionState(ctx.admin, session.id, serialState(newState));
     await telegram.answerCallbackQuery(callbackQueryId, choice === "skip" ? "Воздержался." : "Голос учтён.");
 
+    const targetLabel =
+      choice === "skip"
+        ? "пропуск"
+        : formatPlayerTag(state.players.find((p) => p.id === choice) ?? { id: choice, name: "?", username: null });
+    await telegram.sendMessage(
+      ctx.telegramChatId,
+      `${formatPlayerTag(voter)} проголосовал за ${targetLabel}`,
+    );
+
     const aliveCount = state.players.filter((p) => p.alive).length;
     if (Object.keys(dayVotes).length >= aliveCount) {
       await resolveVote(ctx, { ...session, state: newState } as GameSession);
@@ -783,8 +885,125 @@ export async function tickMafia(admin: SupabaseClient) {
   }
 }
 
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function clearLobbyReminders(ctx: GameCtx, state: MafiaState) {
+  const ids = state.lobbyReminderMessageIds;
+  if (!ids) return;
+  for (const mid of [ids.at59, ids.at29]) {
+    if (mid) await telegram.deleteMessage(ctx.telegramChatId, mid);
+  }
+}
+
+async function fireLobbyReminder(
+  ctx: GameCtx,
+  sessionId: string,
+  shortCode: string,
+  kind: "at59" | "at29",
+) {
+  const { data: row } = await ctx.admin
+    .from("game_sessions")
+    .select("state")
+    .eq("id", sessionId)
+    .eq("type", "mafia")
+    .in("status", ["waiting", "active"])
+    .maybeSingle();
+  if (!row || (row.state as MafiaState).phase !== "lobby") return;
+
+  const state = row.state as MafiaState;
+  const sent = state.lobbyRemindersSent ?? {};
+  if (kind === "at59" && sent.at59) return;
+  if (kind === "at29" && sent.at29) return;
+
+  const kb = await lobbyKeyboard(shortCode);
+  const text = kind === "at59" ? "⏱ Осталось 59 сек" : "⏱ Осталось 29 сек";
+  const res: any = await telegram.sendMessage(ctx.telegramChatId, text, { reply_markup: kb });
+  const messageId = res?.result?.message_id as number | undefined;
+
+  await updateSessionState(ctx.admin, sessionId, serialState({
+    ...state,
+    lobbyRemindersSent: { ...sent, [kind]: true },
+    lobbyReminderMessageIds: {
+      ...state.lobbyReminderMessageIds,
+      [kind]: messageId,
+    },
+  }));
+}
+
+async function fireLobbyEnd(ctx: GameCtx, sessionId: string) {
+  const { data: row } = await ctx.admin
+    .from("game_sessions")
+    .select("*, chats!inner(telegram_chat_id)")
+    .eq("id", sessionId)
+    .eq("type", "mafia")
+    .in("status", ["waiting", "active"])
+    .maybeSingle();
+  if (!row || (row.state as MafiaState).phase !== "lobby") return;
+  await tickMafiaSession(ctx.admin, row);
+}
+
+function scheduleMafiaLobbyTimers(ctx: GameCtx, sessionId: string, shortCode: string) {
+  const work = (async () => {
+    await sleep(LOBBY_REMINDER_59_MS);
+    await fireLobbyReminder(ctx, sessionId, shortCode, "at59");
+    await sleep(LOBBY_REMINDER_29_MS - LOBBY_REMINDER_59_MS);
+    await fireLobbyReminder(ctx, sessionId, shortCode, "at29");
+    await sleep(LOBBY_MS - LOBBY_REMINDER_29_MS);
+    await fireLobbyEnd(ctx, sessionId);
+  })().catch((e) => console.error("mafia lobby timers failed", e));
+
+  if (ctx.waitUntil) ctx.waitUntil(work);
+  else void work;
+}
+
+async function maybeSendLobbyReminders(
+  ctx: GameCtx,
+  session: GameSession,
+  state: MafiaState,
+): Promise<MafiaState> {
+  if (!state.lobbyStartedAt) return state;
+  const started = new Date(state.lobbyStartedAt).getTime();
+  const now = Date.now();
+
+  if (now >= started + LOBBY_REMINDER_59_MS) {
+    await fireLobbyReminder(ctx, session.id, session.short_code, "at59");
+  }
+  if (now >= started + LOBBY_REMINDER_29_MS) {
+    await fireLobbyReminder(ctx, session.id, session.short_code, "at29");
+  }
+
+  const { data: fresh } = await ctx.admin
+    .from("game_sessions")
+    .select("state")
+    .eq("id", session.id)
+    .maybeSingle();
+  return (fresh?.state as MafiaState | undefined) ?? state;
+}
+
+async function cancelInsufficientLobby(
+  admin: SupabaseClient,
+  ctx: GameCtx,
+  session: GameSession,
+  state: MafiaState,
+) {
+  const { data: fresh } = await admin
+    .from("game_sessions")
+    .select("state")
+    .eq("id", session.id)
+    .maybeSingle();
+  const latest = (fresh?.state as MafiaState | undefined) ?? state;
+
+  await clearLobbyReminders(ctx, latest);
+  if (latest.lobbyMessageId) {
+    await telegram.deleteMessage(ctx.telegramChatId, latest.lobbyMessageId);
+  }
+  await finishSession(admin, session.id, latest);
+  await telegram.sendMessage(ctx.telegramChatId, "Недостаточно игроков для начала игры...");
+}
+
 export async function tickMafiaSession(admin: SupabaseClient, session: any) {
-  if (!isSessionDue(session.state)) return;
   const ctx: GameCtx = {
     admin,
     chatId: session.chat_id,
@@ -795,20 +1014,21 @@ export async function tickMafiaSession(admin: SupabaseClient, session: any) {
   const phase = session.state.phase as MafiaPhase;
 
   if (phase === "lobby") {
-    if (session.state.players.length >= MIN_PLAYERS) {
-      await beginNight(ctx, gameSession, session.state.players, 1);
+    let state = session.state as MafiaState;
+    state = await maybeSendLobbyReminders(ctx, gameSession, state);
+    if (!isSessionDue(state)) return;
+
+    if (state.players.length >= MIN_PLAYERS) {
+      await beginNight(ctx, gameSession, state.players, 1);
     } else {
-      await finishSession(admin, session.id, session.state);
-      if (session.state.lobbyMessageId) {
-        await telegram.editMessageReplyMarkup(
-          ctx.telegramChatId,
-          session.state.lobbyMessageId,
-          undefined,
-        );
-      }
-      await telegram.sendMessage(ctx.telegramChatId, "Недостаточно игроков — Мафия отменяется 🤷");
+      await cancelInsufficientLobby(admin, ctx, gameSession, state);
     }
-  } else if (phase === "night") {
+    return;
+  }
+
+  if (!isSessionDue(session.state)) return;
+
+  if (phase === "night") {
     await resolveNightPhase(ctx, gameSession);
   } else if (phase === "day_discuss") {
     await beginVote(ctx, gameSession);

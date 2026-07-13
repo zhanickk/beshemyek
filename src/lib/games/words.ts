@@ -1,31 +1,5 @@
 // Starter word/prompt banks (spec 3.2/3.4). Not admin-editable yet — seed only.
 
-export const CROCODILE_WORDS = {
-  usual: [
-    "жираф",
-    "светофор",
-    "бумеранг",
-    "пицца",
-    "вулкан",
-    "холодильник",
-    "парашют",
-    "будильник",
-    "аквариум",
-    "эскалатор",
-  ],
-  aiesec: [
-    "Roll Call",
-    "Induction",
-    "Handover",
-    "Buddy",
-    "Apply",
-    "Deadline по KPI",
-    "Национальная конференция",
-    "LCM",
-  ],
-  brainrot: ["скибиди туалет", "сигма грайндсет", "рюкзак Хабиби", "брейнрот", "гигачад"],
-};
-
 export const TABOO_CARDS = [
   { word: "Roll Call", forbidden: ["созвон", "перекличка", "кричалка", "встреча"] },
   { word: "LCM", forbidden: ["собрание", "лк", "встреча", "созвон"] },
@@ -85,13 +59,6 @@ export const TRUTH_OR_DARE = {
     ],
   },
 };
-
-export function randomCrocodileWord() {
-  const categories = Object.keys(CROCODILE_WORDS) as (keyof typeof CROCODILE_WORDS)[];
-  const category = categories[Math.floor(Math.random() * categories.length)];
-  const words = CROCODILE_WORDS[category];
-  return { word: words[Math.floor(Math.random() * words.length)], category };
-}
 
 export function containsWord(text: string, word: string): boolean {
   const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

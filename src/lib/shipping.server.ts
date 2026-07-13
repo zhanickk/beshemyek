@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { telegram } from "@/lib/telegram.server";
+import { telegram, chatMemberTag } from "@/lib/telegram.server";
 
 function randomDelayMs() {
   return (30 + Math.random() * 90) * 60 * 1000; // 30-120 min, per spec section 4
@@ -10,7 +10,7 @@ function memberName(m: {
   username?: string | null;
   telegram_user_id: number;
 }) {
-  return m.display_name || (m.username ? `@${m.username}` : `#${m.telegram_user_id}`);
+  return chatMemberTag(m);
 }
 
 export async function maybeStartShipping(
@@ -82,11 +82,13 @@ async function progressShippingMatch(admin: SupabaseClient, match: any) {
   const nameA = memberName(
     members?.find((m) => m.telegram_user_id === match.user_a) ?? {
       telegram_user_id: match.user_a,
+      display_name: "участник",
     },
   );
   const nameB = memberName(
     members?.find((m) => m.telegram_user_id === match.user_b) ?? {
       telegram_user_id: match.user_b,
+      display_name: "участник",
     },
   );
 

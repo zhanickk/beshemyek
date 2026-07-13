@@ -9,9 +9,46 @@ import {
   type GameCtx,
   type GameSession,
 } from "./engine.server";
-import { randomCrocodileWord, containsWord } from "./words";
+import { randomCrocodileWord, containsWord } from "./crocodile-words";
 
 const ROUND_MS = 3 * 60 * 1000;
+
+function explainerDmKeyboard(shortCode: string) {
+  return inlineKeyboard([
+    [{ text: "🔄 Другое слово", callback_data: packCallback(shortCode, "skip") }],
+  ]);
+}
+
+async function sendExplainerWord(telegramUserId: number, session: GameSession) {
+  await telegram.sendMessage(
+    telegramUserId,
+    `🐊 Твоё слово для Крокодила: <b>${session.state.word}</b>\nКатегория: «${session.state.category}»\nОбъясни его чату, не называя впрямую и без однокоренных слов!\n\nНе знаешь слово? Жми «Другое слово» или напиши /skip`,
+    { reply_markup: explainerDmKeyboard(session.short_code) },
+  );
+}
+
+async function skipCrocodileWord(
+  ctx: GameCtx,
+  session: GameSession,
+  fromUserId: number,
+  callbackQueryId?: string,
+) {
+  if (fromUserId !== session.state.explainerId) {
+    if (callbackQueryId) {
+      await telegram.answerCallbackQuery(callbackQueryId, "Скип может только загадывающий", true);
+    }
+    return;
+  }
+  const skippedWords = [...(session.state.skippedWords ?? []), session.state.word];
+  const { word, category } = randomCrocodileWord(skippedWords);
+  const nextState = { ...session.state, word, category, skippedWords };
+  await updateSessionState(ctx.admin, session.id, nextState);
+  session.state = nextState;
+  if (callbackQueryId) {
+    await telegram.answerCallbackQuery(callbackQueryId, "Вот другое слово 👇");
+  }
+  await sendExplainerWord(fromUserId, session);
+}
 
 export async function startCrocodile(ctx: GameCtx, invoker: { id: number; name: string }) {
   const existing = await getBlockingSession(ctx.admin, ctx.chatId, "crocodile");
@@ -35,10 +72,7 @@ export async function startCrocodile(ctx: GameCtx, invoker: { id: number; name: 
 
   let dmSent = false;
   try {
-    await telegram.sendMessage(
-      invoker.id,
-      `🐊 Твоё слово для Крокодила: <b>${word}</b>\nОбъясни его чату, не называя впрямую и без однокоренных слов!`,
-    );
+    await sendExplainerWord(invoker.id, session);
     dmSent = true;
   } catch (e) {
     console.error("crocodile DM failed", e);
@@ -77,10 +111,37 @@ export async function resendCrocodileWord(
   telegramUserId: number,
 ) {
   if (session.state.explainerId !== telegramUserId) return;
-  await telegram.sendMessage(
-    telegramUserId,
-    `🐊 Твоё слово для Крокодила: <b>${session.state.word}</b>\nОбъясни его чату, не называя впрямую!`,
-  );
+  await sendExplainerWord(telegramUserId, session);
+}
+
+export async function handleCrocodilePrivateMessage(
+  admin: GameCtx["admin"],
+  telegramUserId: number,
+  text: string,
+): Promise<boolean> {
+  const cmd = text.trim().toLowerCase();
+  if (cmd !== "/skip") return false;
+
+  const { data: sessions } = await admin
+    .from("game_sessions")
+    .select("*, chats!inner(telegram_chat_id)")
+    .eq("type", "crocodile")
+    .eq("status", "active");
+
+  for (const raw of sessions ?? []) {
+    if (raw.state.explainerId !== telegramUserId) continue;
+    const ctx: GameCtx = {
+      admin,
+      chatId: raw.chat_id,
+      telegramChatId: (raw as any).chats.telegram_chat_id,
+      lang: "ru",
+    };
+    await skipCrocodileWord(ctx, raw as GameSession, telegramUserId);
+    return true;
+  }
+
+  await telegram.sendMessage(telegramUserId, "Сейчас ты нигде не загадываешь в Крокодиле 🐊");
+  return true;
 }
 
 export async function handleCrocodileCallback(
@@ -100,6 +161,10 @@ export async function handleCrocodileCallback(
       ctx.telegramChatId,
       `💡 Подсказка: слово из категории «<b>${session.state.category}</b>»`,
     );
+    return;
+  }
+  if (action === "skip") {
+    await skipCrocodileWord(ctx, session, fromUserId, callbackQueryId);
     return;
   }
   if (action === "surrender") {
