@@ -2,7 +2,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { telegram, T, type Lang } from "@/lib/telegram.server";
 
 export async function runPromptTick(admin: SupabaseClient) {
-  const nowHour = new Date().getUTCHours();
+  const now = new Date();
+  const nowHour = now.getUTCHours();
+  const nowMinute = now.getUTCMinutes();
   const { data: chats } = await admin
     .from("chats")
     .select(
@@ -32,7 +34,7 @@ export async function runPromptTick(admin: SupabaseClient) {
     }
 
     let shouldFire = false;
-    if (s.prompt_frequency === "hourly") shouldFire = true;
+    if (s.prompt_frequency === "hourly") shouldFire = nowMinute === 0;
     else if (s.prompt_frequency === "daily") shouldFire = nowHour === (s.prompt_hour_utc ?? 14);
     else if (s.prompt_frequency === "twice_daily")
       shouldFire =
