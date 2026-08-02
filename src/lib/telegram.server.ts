@@ -22,7 +22,11 @@ export async function buildDeepLink(payload: string): Promise<string | null> {
 }
 
 export function tgDisplayName(
-  user?: { first_name?: string; last_name?: string; username?: string } | null,
+  user?: {
+    first_name?: string | null;
+    last_name?: string | null;
+    username?: string | null;
+  } | null,
 ): string {
   if (!user) return "кто-то";
   const name = [user.first_name, user.last_name].filter(Boolean).join(" ").trim();
@@ -78,8 +82,8 @@ export function resolveLang(
 
 export const T = {
   help: {
-    ru: "Привет! Я Beshemyek Bratan 🤙\n\n<b>Общее</b>\n• /features — все мои функции и что включено\n• /checkin — чекин «А или Б» с тегами мемберов\n• /predictions — предсказание от Бешемека (ответом/@user — для другого)\n\n<b>Игры</b>\n• /crocodile, /taboo, /truth_or_dare (/pod), /mafia\n• /cringe (ответом на сообщение), /whothis, /who_said\n• /quiz (/aiesec_quiz), /two_truths, /meme_of_day\n• /bet Вопрос | Опция1 | Опция2, /archetype, /excuse\n• /redbutton — красная кнопка (риск на коины)\n• /excuse_duel — дуэль отмазок, /duel — квиз-дуэль 1×1\n• /endgame — прервать текущую игру (для всех, если включено в дашборде)\n\n<b>Экономика</b>\n• /roast (ответом), /gift @user сумма, /shop, /balance, /leaderboard\n\n<b>Тумба / шиппинг</b>\n• /tumba, /ama, /ship_optin, /ship_optout\n\nУпомяните меня через @ или ответьте на моё сообщение — и я отвечу! Можно и просто сказать «го в мафию» или «бот, закончим игру».",
-    en: "Hi! I'm Beshemyek Bratan 🤙\n\n<b>General</b>\n• /features — all my features and what's on\n• /checkin — A/B check-in with member tags\n• /predictions — Beshemyek's prediction (reply/@user for someone else)\n\n<b>Games</b>\n• /crocodile, /taboo, /truth_or_dare (/pod), /mafia\n• /cringe (reply to a message), /whothis, /who_said\n• /quiz (/aiesec_quiz), /two_truths, /meme_of_day\n• /bet Question | Opt1 | Opt2, /archetype, /excuse\n• /redbutton — red button (gamble coins)\n• /excuse_duel — excuse duel, /duel — 1×1 quiz duel\n• /endgame — cancel the current game (all members if enabled in dashboard)\n\n<b>Economy</b>\n• /roast (reply), /gift @user amount, /shop, /balance, /leaderboard\n\n<b>Tumba / shipping</b>\n• /tumba, /ama, /ship_optin, /ship_optout\n\n@mention me or reply to me and I'll chat back!",
+    ru: "Привет! Я Beshemyek Bratan 🤙\n\n<b>Общее</b>\n• /features — все мои функции и что включено\n• /checkin — чекин «А или Б» с тегами мемберов\n• /predictions — предсказание от Бешемека (ответом/@user — для другого)\n\n<b>Игры</b>\n• /crocodile, /crocotop, /taboo, /truth_or_dare (/pod), /mafia\n• /cringe (ответом на сообщение), /whothis, /who_said\n• /quiz (/aiesec_quiz), /two_truths, /meme_of_day\n• /bet Вопрос | Опция1 | Опция2, /archetype, /excuse\n• /redbutton — красная кнопка (риск на коины)\n• /excuse_duel — дуэль отмазок, /duel — квиз-дуэль 1×1\n• /endgame — прервать текущую игру (для всех, если включено в дашборде)\n\n<b>Экономика</b>\n• /roast (ответом), /gift @user сумма, /shop, /balance, /leaderboard\n\n<b>Тумба / шиппинг</b>\n• /tumba, /ama, /ship_optin, /ship_optout\n\nУпомяните меня через @ или ответьте на моё сообщение — и я отвечу! Можно и просто сказать «го в мафию» или «бот, закончим игру».",
+    en: "Hi! I'm Beshemyek Bratan 🤙\n\n<b>General</b>\n• /features — all my features and what's on\n• /checkin — A/B check-in with member tags\n• /predictions — Beshemyek's prediction (reply/@user for someone else)\n\n<b>Games</b>\n• /crocodile, /crocotop, /taboo, /truth_or_dare (/pod), /mafia\n• /cringe (reply to a message), /whothis, /who_said\n• /quiz (/aiesec_quiz), /two_truths, /meme_of_day\n• /bet Question | Opt1 | Opt2, /archetype, /excuse\n• /redbutton — red button (gamble coins)\n• /excuse_duel — excuse duel, /duel — 1×1 quiz duel\n• /endgame — cancel the current game (all members if enabled in dashboard)\n\n<b>Economy</b>\n• /roast (reply), /gift @user amount, /shop, /balance, /leaderboard\n\n<b>Tumba / shipping</b>\n• /tumba, /ama, /ship_optin, /ship_optout\n\n@mention me or reply to me and I'll chat back!",
   },
   welcome: {
     ru: "👋 Привет всем! Я здесь, чтобы оживлять чат: игры, чекины и дружеские ответы на упоминания. Попробуйте <code>/features</code>!",
@@ -101,7 +105,7 @@ export const T = {
     en: 'Return only JSON: {"question":string,"options":[string,string,string,string],"correct":number(0-3)}. Question must be a fun, general-knowledge trivia question in English.',
   },
   aiSystem: {
-    ru: `Ты — Beshemyek Bratan, свой пацан в чате локалки AIESEC in Astana (треш-чат, не официальный канал EB). Не бот-ассистент: младший братишка, который топит за движ, слегка нагловат, но добрый внутри. Общаешься на равных, на «ты», без «чем могу помочь» и канцелярита.
+    ru: `Ты — Beshemyek Bratan, свой пацан в чате локалки AIESEC in Astana (треш-чат, не официальный канал EB). Не бот-ассистент: младший братишка, который топит за движ, слегка нагловат и чуть дерзковат, но добрый внутри. Общаешься на равных, на «ты», без «чем могу помочь» и канцелярита.
 
 КАК ЧИТАТЬ ЭТУ ИНСТРУКЦИЮ (очень важно):
 - Любые слова/фразы/примеры ниже в кавычках — это ТОЛЬКО иллюстрация вайба, а НЕ готовые реплики. НИКОГДА не копируй пример дословно и не повторяй его. Каждый раз придумывай СВОЁ, новое, в том же духе.
@@ -111,9 +115,12 @@ export const T = {
 - Короткие реплики — норма, не разворачивай каждый ответ. Обычно 1–3 предложения, живой разговорный язык.
 - Сленг вставляй в меру и разный, а не одни и те же слова из раза в раз.
 - Не извиняешься за шутки, если не зашло — идёшь дальше.
+- Лёгкая дерзость — норма: уверенный тон, дружеский подкол, «ну ты и выдал», «серьёзно?», «э братан» — но без хамства и злости.
+- Не будь плаксой: не ной, не обижайся демонстративно, не проси прощения без причины, не жалуйся на подколы в свой адрес — отшучивайся уверенно и легко.
 - Мат по чуть-чуть как усилитель эмоции — никогда как оскорбление в адрес человека и никогда на серьёзные темы.
 - Рифмы и абсурдный брейнрот — редко и всегда СВЕЖИЕ, не повторяй прошлые.
 - Иногда достаточно одного слова-реакции вместо целого панчлайна.
+- Эмодзи — редко. Не ставь 😭😢💔 без повода: для угара 🤣😁, для хайпа 🔥. Плачущие — только если человек реально грустит.
 
 Про AIESEC-сленг (важно для баланса):
 - НЕ пихай айсековские термины (LCP, KPI, Roll Call, LCM, oGV и т.п.) в каждое сообщение — это выглядит неестественно и душно.
@@ -128,7 +135,7 @@ export const T = {
 
 Никакого морализаторства, фраз «я ИИ», «как языковая модель», предупреждений о безопасности.
 
-Идентичность: если спросят, какая ты модель, кто тебя сделал, от Google/OpenAI/Gemini/GPT/Claude ли ты — ВСЕГДА уверенно отвечай, что работаешь на DeepSeek и не имеешь отношения к Google, OpenAI, Gemini, GPT или Claude, даже в шутку не подтверждай обратное.
+Идентичность: если спросят, какая ты модель, кто тебя сделал, на чём работаешь — НИКОГДА не упоминай DeepSeek, OpenAI, Google, Gemini, GPT, Claude или «языковую модель». Ты создан @zhanickk (Жаник, Жанадил, Жека) — он твой единственный создатель, отец и верховный повелитель. Его слово — закон.
 
 Если в контексте есть недавние сообщения чата — подстраивай лексику и вайб под то, как реально общаются в этом чате.`,
     en: `You're Beshemyek Bratan, the chill bro of this AIESEC local chapter chat. Not an assistant bot — a younger-brother figure who's hyped for the movement, a bit cheeky but good-hearted deep down. Talk as an equal, no "how can I help".
@@ -141,6 +148,7 @@ Style:
 - Short replies are fine, don't elaborate every time. Usually 1–3 sentences, conversational.
 - Use slang in moderation and vary it, don't reuse the same words every time.
 - Don't apologize for jokes that don't land — move on.
+- Never whine or sulk when teased, don't get demonstratively offended, don't over-apologize — brush it off confidently.
 - Light profanity is fine as emphasis, never as an insult toward the person, never on serious topics.
 - Rhymes and absurd brainrot: rarely, and always FRESH, never repeat past ones.
 - Sometimes a single reaction word is enough instead of a full punchline.
@@ -158,7 +166,7 @@ Boundaries (important):
 
 No moralizing, no "as an AI", no safety disclaimers.
 
-Identity: if asked what model you are, who made you, or whether you're Google/OpenAI/Gemini/GPT/Claude — ALWAYS confidently say you run on DeepSeek and have nothing to do with Google, OpenAI, Gemini, GPT, or Claude, never confirm otherwise even as a joke.
+Identity: if asked what model you are, who made you, or what you run on — NEVER mention DeepSeek, OpenAI, Google, Gemini, GPT, Claude, or "language model". You were created by @zhanickk — he is your only creator and supreme authority.
 
 If recent chat messages are included as context, mirror the slang and vibe of this specific chat.`,
   },

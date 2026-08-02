@@ -1,4 +1,5 @@
 import { telegram, inlineKeyboard } from "@/lib/telegram.server";
+import { playerTag } from "@/lib/member-tag.server";
 import { awardCoins } from "@/lib/economy.server";
 import {
   createSession,
@@ -84,7 +85,7 @@ export async function startQuizDuel(ctx: GameCtx, challenger: { id: number; name
 
   const sent: any = await telegram.sendMessage(
     ctx.telegramChatId,
-    `⚔️ <b>Квиз-дуэль 1×1!</b>\n${challenger.name} бросает вызов. Блиц из ${questions.length} вопросов, победитель забирает ${WIN_REWARD} БешКоинов.\nКто примет вызов?`,
+    `⚔️ <b>Квиз-дуэль 1×1!</b>\n${playerTag(challenger)} бросает вызов. Блиц из ${questions.length} вопросов, победитель забирает ${WIN_REWARD} БешКоинов.\nКто примет вызов?`,
     {
       reply_markup: inlineKeyboard([
         [{ text: "Принять дуэль", callback_data: packCallback(session.short_code, "acc") }],
@@ -145,7 +146,7 @@ async function finishDuel(ctx: GameCtx, session: GameSession, state: QuizDuelSta
   const oScore = state.scores[String(o.id)] ?? 0;
   await finishSession(ctx.admin, session.id, { ...state, phase: "done" });
 
-  let msg = `🏁 <b>Дуэль окончена!</b>\n${c.name}: ${cScore} • ${o.name}: ${oScore}\n\n`;
+  let msg = `🏁 <b>Дуэль окончена!</b>\n${playerTag(c)}: ${cScore} • ${playerTag(o)}: ${oScore}\n\n`;
   if (cScore === oScore) {
     msg += "Ничья! Оба хороши, коины остаются при своих.";
   } else {
@@ -153,7 +154,7 @@ async function finishDuel(ctx: GameCtx, session: GameSession, state: QuizDuelSta
     await awardCoins(ctx.admin, ctx.chatId, winner.id, WIN_REWARD, "game_win", {
       game: "quiz_duel",
     });
-    msg += `🏆 Побеждает ${winner.name}! +${WIN_REWARD} БешКоинов.`;
+    msg += `🏆 Побеждает ${playerTag(winner)}! +${WIN_REWARD} БешКоинов.`;
   }
   await telegram.sendMessage(ctx.telegramChatId, msg);
 }
@@ -178,7 +179,7 @@ export async function handleQuizDuelCallback(
       await telegram.editMessageText(
         ctx.telegramChatId,
         state.lobbyMessageId,
-        `🏳 ${presser.name} отказался от дуэли. Вызов ${state.challenger.name} снят.`,
+        `🏳 ${playerTag(presser)} отказался от дуэли. Вызов ${playerTag(state.challenger)} снят.`,
       );
     }
     await finishSession(ctx.admin, session.id, { ...state, phase: "done", declined: true });
@@ -207,7 +208,7 @@ export async function handleQuizDuelCallback(
     };
     await telegram.sendMessage(
       ctx.telegramChatId,
-      `⚔️ ${state.challenger.name} 🆚 ${presser.name}! Отвечать могут только дуэлянты. Кто первый даёт верный ответ — забирает очко.`,
+      `⚔️ ${playerTag(state.challenger)} 🆚 ${playerTag(presser)}! Отвечать могут только дуэлянты. Кто первый даёт верный ответ — забирает очко.`,
     );
     await postQuestion(ctx, session, playing);
     return;
@@ -271,7 +272,7 @@ export async function tickQuizDuel(ctx: GameCtx, session: GameSession) {
     await finishSession(ctx.admin, session.id, { ...state, phase: "done" });
     await telegram.sendMessage(
       ctx.telegramChatId,
-      `Никто не принял вызов ${state.challenger.name}. Дуэль отменяется 🤷`,
+      `Никто не принял вызов ${playerTag(state.challenger)}. Дуэль отменяется 🤷`,
     );
     return;
   }

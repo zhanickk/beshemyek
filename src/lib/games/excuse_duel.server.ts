@@ -1,6 +1,6 @@
 import { generateText } from "ai";
 import { createDeepSeekProvider, getDeepSeekModel } from "@/lib/ai-gateway.server";
-import { telegram, inlineKeyboard } from "@/lib/telegram.server";
+import { telegram, inlineKeyboard, chatMemberTag } from "@/lib/telegram.server";
 import { awardCoins, pickRandomMembers } from "@/lib/economy.server";
 import {
   createSession,
@@ -80,16 +80,18 @@ export async function startExcuseDuel(ctx: GameCtx) {
   const members = await pickRandomMembers(ctx.admin, ctx.chatId, 6);
   if (members.length < 2) return { notEnough: true as const };
   const [a, b] = members;
-  const nameA = a.display_name || (a.username ? `@${a.username}` : `#${a.telegram_user_id}`);
-  const nameB = b.display_name || (b.username ? `@${b.username}` : `#${b.telegram_user_id}`);
+  const tagA = chatMemberTag(a);
+  const tagB = chatMemberTag(b);
+  const plainA = a.display_name?.trim() || (a.username ? `@${a.username}` : "участник");
+  const plainB = b.display_name?.trim() || (b.username ? `@${b.username}` : "участник");
 
-  const { situation, excuseA, excuseB } = await generateDuelContent(nameA, nameB);
+  const { situation, excuseA, excuseB } = await generateDuelContent(plainA, plainB);
 
   const state: DuelState = {
     situation,
     duelists: [
-      { id: a.telegram_user_id, name: nameA, excuse: excuseA },
-      { id: b.telegram_user_id, name: nameB, excuse: excuseB },
+      { id: a.telegram_user_id, name: tagA, excuse: excuseA },
+      { id: b.telegram_user_id, name: tagB, excuse: excuseB },
     ],
     votes: {},
     deadlineAt: new Date(Date.now() + VOTE_MS).toISOString(),
@@ -98,12 +100,12 @@ export async function startExcuseDuel(ctx: GameCtx) {
 
   const sent: any = await telegram.sendMessage(
     ctx.telegramChatId,
-    `🥊 <b>Дуэль отмазок!</b>\nСитуация: <i>${situation}</i>\n\n🅰️ <b>${nameA}</b>: ${excuseA}\n\n🅱️ <b>${nameB}</b>: ${excuseB}\n\nЧья отмазка смешнее? Голосуем (${Math.round(VOTE_MS / 60000)} мин):`,
+    `🥊 <b>Дуэль отмазок!</b>\nСитуация: <i>${situation}</i>\n\n🅰️ <b>${tagA}</b>: ${excuseA}\n\n🅱️ <b>${tagB}</b>: ${excuseB}\n\nЧья отмазка смешнее? Голосуем (${Math.round(VOTE_MS / 60000)} мин):`,
     {
       reply_markup: inlineKeyboard([
         [
-          { text: `🅰️ ${nameA}`, callback_data: packCallback(session.short_code, "v", "0") },
-          { text: `🅱️ ${nameB}`, callback_data: packCallback(session.short_code, "v", "1") },
+          { text: `🅰️ ${plainA}`, callback_data: packCallback(session.short_code, "v", "0") },
+          { text: `🅱️ ${plainB}`, callback_data: packCallback(session.short_code, "v", "1") },
         ],
       ]),
     },

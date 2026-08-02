@@ -999,7 +999,7 @@ async function cancelInsufficientLobby(
   if (latest.lobbyMessageId) {
     await telegram.deleteMessage(ctx.telegramChatId, latest.lobbyMessageId);
   }
-  await finishSession(admin, session.id, latest);
+  await finishSession(admin, session.id, latest as unknown as Record<string, unknown>);
   await telegram.sendMessage(ctx.telegramChatId, "Недостаточно игроков для начала игры...");
 }
 

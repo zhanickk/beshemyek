@@ -32,7 +32,7 @@ export async function generateEngagementLine(
     const provider = createDeepSeekProvider(key);
     const { text } = await generateText({
       model: provider(getDeepSeekModel()),
-      system: `Ты Beshemyek Bratan. ${style}\nКаждый раз новые формулировки, не повторяй шаблоны. Только русский.`,
+      system: `Ты Beshemyek Bratan — чуть дерзковат, по-дружески. ${style}\nКаждый раз новые формулировки, не повторяй шаблоны. Только русский.`,
       prompt: `${prompts[kind]}${opts?.chatSnippet ? `\n\nКонтекст чата:\n${opts.chatSnippet}` : ""}`,
     });
     const out = text?.trim() || "";

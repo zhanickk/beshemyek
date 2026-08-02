@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { telegram, inlineKeyboard, buildDeepLink } from "@/lib/telegram.server";
+import { playerTag } from "@/lib/member-tag.server";
 import { truncateBtn } from "@/lib/keyboards.server";
 import { awardCoins } from "@/lib/economy.server";
 import {
@@ -83,12 +84,13 @@ function serialState(state: TabooState): Record<string, unknown> {
 }
 
 function playerName(players: TabooPlayer[], id: number): string {
-  return players.find((p) => p.id === id)?.name ?? `#${id}`;
+  const p = players.find((x) => x.id === id);
+  return playerTag({ id, name: p?.name ?? "участник" });
 }
 
 function renderLobby(players: TabooPlayer[]): string {
   const list = players.length
-    ? players.map((p, i) => `${i + 1}. ${p.name}`).join("\n")
+    ? players.map((p, i) => `${i + 1}. ${playerTag(p)}`).join("\n")
     : "<i>пока никого</i>";
   const need = Math.max(0, MIN_PLAYERS - players.length);
   const status =
@@ -260,12 +262,12 @@ async function beginRound(ctx: GameCtx, session: GameSession, state: TabooState,
     roundNum,
     word,
     explainerId: explainer.id,
-    explainerName: explainer.name,
+    explainerName: playerTag(explainer),
     guesserId: guesser.id,
-    guesserName: guesser.name,
+    guesserName: playerTag(guesser),
     mines: miners.map((m) => ({
       userId: m.id,
-      name: m.name,
+      name: playerTag(m),
       word: null,
       detonated: false,
       suggestions: pickMineSuggestions(word),
@@ -293,7 +295,7 @@ async function beginRound(ctx: GameCtx, session: GameSession, state: TabooState,
 
   await telegram.sendMessage(
     ctx.telegramChatId,
-    `🎯 <b>Раунд ${roundNum}</b>\nРоли:\n🗣 Объясняющий — ${explainer.name}\n🎯 Угадывающий — ${guesser.name}\n💣 Минёры — ${miners.map((m) => m.name).join(", ") || "—"}\n\nМинёры — выберите мину кнопками в личке бота (${MINE_SETUP_MS / 1000} сек).`,
+    `🎯 <b>Раунд ${roundNum}</b>\nРоли:\n🗣 Объясняющий — ${playerTag(explainer)}\n🎯 Угадывающий — ${playerTag(guesser)}\n💣 Минёры — ${miners.map((m) => playerTag(m)).join(", ") || "—"}\n\nМинёры — выберите мину кнопками в личке бота (${MINE_SETUP_MS / 1000} сек).`,
   );
 }
 
@@ -416,7 +418,7 @@ async function finishGame(ctx: GameCtx, session: GameSession, state: TabooState)
     .map((p, i) => {
       const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
       const bonus = i === 0 && top?.score ? ` (+${WINNER_BONUS} 🪙 бонус)` : "";
-      return `${medal} ${p.name} — ${p.score} очков${bonus}`;
+      return `${medal} ${playerTag(p)} — ${p.score} очков${bonus}`;
     })
     .join("\n");
 

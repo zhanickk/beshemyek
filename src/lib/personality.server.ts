@@ -20,7 +20,7 @@ export const KAZAKH_SLANG_NOTE = `Есть набор словечек-прип�
 
 const VARIETY_NOTE = `Держи максимальное разнообразие: рифмы, брейнрот, мемы, шутки и реакции должны быть КАЖДЫЙ РАЗ новыми и своими. Не повторяй прошлые формулировки и не крути по кругу один и тот же набор фраз. Айсековские термины — только по делу и в меру, не в каждом сообщении.`;
 
-export type ResponseMode = "normal" | "one_word" | "surprised" | "brainrot_capsmash" | "confused";
+export type ResponseMode = "normal" | "one_word" | "surprised" | "brainrot_capsmash" | "confused" | "sassy";
 
 function weightedPick<T extends string>(weights: Record<T, number>): T {
   const entries = Object.entries(weights) as [T, number][];
@@ -36,11 +36,12 @@ function weightedPick<T extends string>(weights: Record<T, number>): T {
 export function pickResponseMode(): ResponseMode {
   // Flavor modes are intentionally the minority so normal, varied replies dominate.
   return weightedPick<ResponseMode>({
-    normal: 74,
-    one_word: 9,
+    normal: 66,
+    one_word: 8,
     surprised: 7,
     brainrot_capsmash: 3,
-    confused: 7,
+    confused: 6,
+    sassy: 10,
   });
 }
 
@@ -56,6 +57,8 @@ function randomCapsMash(): string {
  * Resolves a response mode into either literal `text` (send as-is, skip the AI call) or a
  * `directive` to append to the system prompt so the model generates a fresh reply of that shape.
  */
+export { extraContextDirective, mentionsCreator, isCreator, creatorSpeakingDirective } from "@/lib/sovereign.server";
+
 export function resolveResponseMode(mode: ResponseMode): {
   text: string | null;
   directive: string;
@@ -86,6 +89,11 @@ export function resolveResponseMode(mode: ResponseMode): {
       return {
         text: null,
         directive: `${base}\n\nСЕЙЧАС сделай вид, что не догнал/не понял замудрёное сообщение — коротко и с юмором. Можешь (не обязательно) вставить одно словечко из набора-приправы. Сформулируй по-новому, не копируй примеры дословно.`,
+      };
+    case "sassy":
+      return {
+        text: null,
+        directive: `${base}\n\nСЕЙЧАС чуть дерзко и уверенно: лёгкий дружеский подкол или парировка, можно «ну ты и выдал», «с чего вдруг», «э братан» — коротко, с улыбкой, без токсика и оскорблений.`,
       };
     case "normal":
     default:

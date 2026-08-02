@@ -15,6 +15,9 @@ export type FeatureMenuId =
   | "leaderboard"
   | "gift";
 
+/** Economy sub-actions that work in one tap and don't need the economy feature flag. */
+export const INSTANT_ECONOMY_MENU_IDS = new Set<FeatureMenuId>(["balance", "shop", "leaderboard"]);
+
 export interface FeatureMenuItem {
   id: FeatureMenuId;
   label: string;
@@ -227,7 +230,13 @@ export function buildFeaturesCategoryKeyboard(
   const items = MENU_BY_CATEGORY[category];
   const rows = items.map((item) => {
     const on = map[item.featureKey];
-    return [{ text: formatMenuBtnLabel(item.label, on), callback_data: `feat:${category}:${item.id}` }];
+    const instant = category === "economy" && INSTANT_ECONOMY_MENU_IDS.has(item.id);
+    return [
+      {
+        text: formatMenuBtnLabel(item.label, on),
+        callback_data: instant ? `feat:run:${item.id}` : `feat:${category}:${item.id}`,
+      },
+    ];
   });
   rows.push([{ text: "⬅️ Назад", callback_data: "feat:back" }]);
   if (category !== "autopilot" && map.prediction) {
@@ -262,7 +271,7 @@ export function buildFeaturesItemKeyboard(
   item: FeatureMenuItem,
 ) {
   const rows: Array<Array<{ text: string; callback_data: string }>> = [];
-  if (item.launchable && map[item.featureKey]) {
+  if (item.launchable && (map[item.featureKey] || INSTANT_ECONOMY_MENU_IDS.has(item.id))) {
     rows.push([{ text: "▶️ Запустить", callback_data: `feat:run:${item.id}` }]);
   }
   rows.push([{ text: "⬅️ Назад", callback_data: `feat:back:${category}` }]);

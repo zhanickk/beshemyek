@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { generateText } from "ai";
-import { createDeepSeekProvider, getDeepSeekModel } from "@/lib/ai-gateway.server";
+import { generateAiReply, DEFAULT_AI_TONE } from "@/lib/ai-reply.server";
+import { handleNamePingConversation } from "@/lib/name-ping.server";
+import { handleCreatorCommand, isCreator } from "@/lib/sovereign.server";
 import {
   telegram,
   verifyTelegramSecret,
@@ -10,16 +11,18 @@ import {
   tgUserMention,
   buildDeepLink,
   T,
-  AIESEC_GLOSSARY,
   type Lang,
 } from "@/lib/telegram.server";
 import { getAdmin } from "@/lib/supabase-admin.server";
 import {
   ensureMember,
   awardCoins,
+  awardChatMessageCoins,
+  isAwardableChatMessage,
   spendCoins,
   getBalance,
   getLeaderboard,
+  formatLeaderboardMessage,
 } from "@/lib/economy.server";
 import {
   isFeatureEnabled,
@@ -49,6 +52,8 @@ import {
   handleCrocodileMessage,
   handleCrocodileCallback,
   handleCrocodilePrivateMessage,
+  getCrocodileGuessTop,
+  formatCrocodileTopMessage,
 } from "@/lib/games/crocodile.server";
 import { startTaboo, resendTabooCard, handleTabooMessage, handleTabooCallback, handleTabooPrivateMessage } from "@/lib/games/taboo.server";
 import { startCringeGame, handleCringeCallback } from "@/lib/games/cringe.server";
@@ -98,8 +103,7 @@ import {
   looksLikeTumbaIntent,
   type TumbaCategory,
 } from "@/lib/tumba.server";
-import { pickResponseMode, resolveResponseMode } from "@/lib/personality.server";
-import { buildChatStyleBlock, TRASH_CHAT_CHIME_IN_NOTE } from "@/lib/chat-style.server";
+import { resolveResponseMode } from "@/lib/personality.server";
 import { buildChatHistoryContext } from "@/lib/chat-context.server";
 import { tryOrganicChimeIn } from "@/lib/engagement.server";
 import { handleCheckinMessage, handleCheckinCallback, startCheckin } from "@/lib/checkin.server";
@@ -119,6 +123,7 @@ import {
   featuresItemText,
   findMenuItem,
   getMenuItem,
+  INSTANT_ECONOMY_MENU_IDS,
   MENU_BY_CATEGORY,
   type FeatureCategory,
   type FeatureMenuId,
@@ -207,13 +212,9 @@ async function handleDmMenuAction(
     }
     case DM_MENU.top: {
       const top = await getLeaderboard(admin, chat.id, 10);
-      const lines = top.map(
-        (m, i) =>
-          `${i + 1}. ${m.display_name || (m.username ? `@${m.username}` : `#${m.telegram_user_id}`)} — ${m.coins} 🪙`,
-      );
       await sendDmWithMenu(
         telegramUserId,
-        lines.length ? `🏆 <b>Лидерборд</b>\n${lines.join("\n")}` : "Лидерборд пуст.",
+        formatLeaderboardMessage(top, "🏆 <b>Лидерборд</b>"),
       );
       return;
     }
@@ -314,15 +315,24 @@ async function handleFeaturesCallback(
   if (action === "run") {
     const itemId = parts[2] as FeatureMenuId;
     const found = findMenuItem(itemId);
-    if (!found || !found.item.launchable || !map[found.item.featureKey]) {
+    const instant = INSTANT_ECONOMY_MENU_IDS.has(itemId);
+    if (
+      !found ||
+      (!instant && (!found.item.launchable || !map[found.item.featureKey]))
+    ) {
       await telegram.answerCallbackQuery(cb.id, "Фича выключена или недоступна.", true);
       return;
     }
-    await telegram.answerCallbackQuery(cb.id, "Запускаю…");
+    await telegram.answerCallbackQuery(cb.id);
     const ctx = gameCtx(admin, chatRow.id, chatTelegramId, "ru", waitUntil);
     const invoker = { id: fromUser.id, name: fromName, username: fromUser.username };
-    const msg = await launchFeatureFromMenu(ctx, chatRow, invoker, itemId);
-    if (msg) await telegram.sendMessage(chatTelegramId, msg);
+    try {
+      const msg = await launchFeatureFromMenu(ctx, chatRow, invoker, itemId);
+      if (msg) await telegram.sendMessage(chatTelegramId, msg);
+    } catch (e) {
+      console.error("feat:run failed", itemId, e);
+      await telegram.sendMessage(chatTelegramId, "Не смог выполнить — попробуй ещё раз.");
+    }
     return;
   }
 
@@ -420,7 +430,15 @@ async function launchFeatureFromMenu(
     }
     case "red_button": {
       const r = await startRedButton(ctx, invoker);
-      return (r as any).alreadyActive ? activeMsg : null;
+      if ((r as any).cooldown) {
+        return `💣 Подожди ${(r as any).secondsLeft} сек — кнопка остывает после прошлого раунда.`;
+      }
+      if ((r as any).alreadyActive) {
+        return (r as any).sameType
+          ? "💣 Красная кнопка уже активна — жми на кнопку в чате или подожди."
+          : activeMsg;
+      }
+      return null;
     }
     case "excuse_duel": {
       const r = await startExcuseDuel(ctx);
@@ -460,15 +478,8 @@ async function launchFeatureFromMenu(
       );
       return null;
     }
-    case "leaderboard": {
-      const top = await getLeaderboard(ctx.admin, chatRow.id, 10);
-      if (!top.length) return "Лидерборд пуст.";
-      const lines = top.map(
-        (m, i) =>
-          `${i + 1}. ${m.display_name || (m.username ? `@${m.username}` : `#${m.telegram_user_id}`)} — ${m.coins} 🪙`,
-      );
-      return `🏆 <b>Лидерборд БешКоинов</b>\n${lines.join("\n")}`;
-    }
+    case "leaderboard":
+      return formatLeaderboardMessage(await getLeaderboard(ctx.admin, chatRow.id, 10));
     case "tumba":
       await sendTumbaGroupReminder(ctx.telegramChatId, chatRow.id, invoker.name);
       return null;
@@ -532,42 +543,6 @@ async function launchFeatureFromMenu(
   }
 }
 
-async function generateAiReply(
-  userMessage: string,
-  tone: string,
-  lang: Lang,
-  chatHistory?: string,
-): Promise<string> {
-  const mode = lang === "ru" ? pickResponseMode() : "normal";
-  const flavor = lang === "ru" ? resolveResponseMode(mode) : { text: null, directive: "" };
-  if (flavor.text) return flavor.text;
-
-  const key = process.env.DEEPSEEK_API_KEY;
-  if (!key) return T.aiFallback[lang];
-  const provider = createDeepSeekProvider(key);
-  const personalityDirective = flavor.directive ? `\n\n${flavor.directive}` : "";
-  const glossary = Math.random() < 0.25 ? `\n${AIESEC_GLOSSARY}` : "";
-  const chatStyle = lang === "ru" ? `\n\n${buildChatStyleBlock(userMessage)}` : "";
-  const system = `${T.aiSystem[lang]}\nTone: ${tone}${glossary}${chatStyle}${personalityDirective}`;
-
-  const historyBlock = chatHistory
-    ? `Недавняя переписка в чате (от старых к новым — ОБЯЗАТЕЛЬНО учитывай контекст, не делай вид что не видел):\n${chatHistory}\n\n${TRASH_CHAT_CHIME_IN_NOTE}\n\n---\n`
-    : "";
-  const prompt = `${historyBlock}Сообщение, на которое отвечаешь:\n${userMessage}`;
-
-  try {
-    const { text } = await generateText({
-      model: provider(getDeepSeekModel()),
-      system,
-      prompt,
-    });
-    return text?.trim() || T.aiFallback[lang];
-  } catch (e) {
-    console.error("AI reply failed", e);
-    return T.aiFallback[lang];
-  }
-}
-
 type TgUser = {
   id: number;
   username?: string;
@@ -580,6 +555,7 @@ type TgChat = { id: number; type: string; title?: string; username?: string };
 type TgEntity = { type: string; offset: number; length: number };
 type TgMessage = {
   message_id: number;
+  date: number;
   from?: TgUser;
   chat: TgChat;
   text?: string;
@@ -587,6 +563,9 @@ type TgMessage = {
   reply_to_message?: { message_id: number; from?: TgUser; text?: string };
   photo?: unknown;
   animation?: unknown;
+  sticker?: unknown;
+  video?: unknown;
+  voice?: unknown;
 };
 
 const REACTION_EMOJI = ["😁", "🔥", "👍", "😂", "🤝", "❤️"];
@@ -907,9 +886,15 @@ async function startNaturalGame(
     }
     case "red_button": {
       const r = await startRedButton(ctx, invoker);
-      return (r as any).alreadyActive
-        ? "Уже идёт другая игра, закончите её сначала (/endgame)."
-        : null;
+      if ((r as any).cooldown) {
+        return `💣 Подожди ${(r as any).secondsLeft} сек — кнопка остывает после прошлого раунда.`;
+      }
+      if ((r as any).alreadyActive) {
+        return (r as any).sameType
+          ? "💣 Красная кнопка уже активна — жми на кнопку в чате или подожди."
+          : "Уже идёт другая игра, закончите её сначала (/endgame).";
+      }
+      return null;
     }
     case "excuse_duel": {
       const r = await startExcuseDuel(ctx);
@@ -1106,7 +1091,10 @@ async function handleCallbackQuery(
 
   switch (session.type) {
     case "crocodile":
-      await handleCrocodileCallback(ctx, session, parsed.action, cb.id, fromUser.id);
+      await handleCrocodileCallback(ctx, session, parsed.action, cb.id, {
+        id: fromUser.id,
+        name: fromName,
+      }, cbChatType === "private" ? cb.message?.message_id : undefined);
       break;
     case "aiesec_quiz":
       await handleAiesecQuizCallback(
@@ -1182,6 +1170,7 @@ async function handleCallbackQuery(
       await handleRedButtonCallback(ctx, session, parsed.action, parsed.payload, cb.id, {
         id: fromUser.id,
         name: fromName,
+        username: fromUser.username,
       });
       break;
     case "excuse_duel":
@@ -1503,6 +1492,7 @@ async function handleGroupMessage(
 
   const chatRow = await ensureChat(admin, message.chat);
   if (!chatRow) return;
+  if (!chatRow.is_active) return;
   scheduleDueTicks(admin, chatRow.id);
   await admin
     .from("chats")
@@ -1517,6 +1507,22 @@ async function handleGroupMessage(
   const lang: Lang = resolveLang(settings?.language, text, message.from?.language_code);
   const fromName = tgDisplayName(message.from);
 
+  if (message.from && isCreator(message.from) && text.trim() && settings) {
+    const botUsername = await import("@/lib/telegram.server").then((m) => m.getBotUsername());
+    const sovereignHandled = await handleCreatorCommand(admin, {
+      chatId: chatRow.id,
+      telegramChatId: chatId,
+      settingsId: settings.id,
+      text,
+      lang,
+      creatorId: message.from.id,
+      replyTo: message.reply_to_message,
+      isPaused: settings.is_paused ?? false,
+      botUsername,
+    });
+    if (sovereignHandled) return;
+  }
+
   if (settings?.is_paused) return;
   if (isStaleTelegramDate(message.date, settings?.ignore_messages_before)) return;
 
@@ -1525,6 +1531,16 @@ async function handleGroupMessage(
       username: message.from.username,
       display_name: fromName,
     });
+    if (isAwardableChatMessage(text, message)) {
+      const coinWork = awardChatMessageCoins(
+        admin,
+        chatRow.id,
+        message.from.id,
+        message.message_id,
+      ).catch((e) => console.error("chat_message coins failed", e));
+      if (waitUntil) waitUntil(coinWork);
+      else await coinWork;
+    }
   }
 
   const ctx = gameCtx(admin, chatRow.id, chatId, lang, waitUntil);
@@ -1536,10 +1552,12 @@ async function handleGroupMessage(
   if (!concurrent) activeGames = activeGames.slice(0, 1);
 
   if (activeGames.length && !text.startsWith("/")) {
+    const crocodileGame = activeGames.find((g) => g.type === "crocodile");
+    if (crocodileGame && (await handleCrocodileMessage(ctx, crocodileGame, message))) return;
+
     for (const activeGame of activeGames) {
-      if (activeGame.type === "crocodile") {
-        if (await handleCrocodileMessage(ctx, activeGame, message)) return;
-      } else if (activeGame.type === "taboo") {
+      if (activeGame.type === "crocodile") continue;
+      if (activeGame.type === "taboo") {
         if (await handleTabooMessage(ctx, activeGame, message)) return;
       } else if (activeGame.type === "meme_of_day") {
         if (await handleMemeMessage(ctx, activeGame, message as any, fromName)) return;
@@ -1584,6 +1602,11 @@ async function handleGroupMessage(
       const r = await startCrocodile(ctx, { id: message.from!.id, name: fromName });
       if ((r as any).alreadyActive)
         await telegram.sendMessage(chatId, await activeGameBlockingMessage(admin, chatRow.id));
+      return;
+    }
+    if (cmd === "/crocotop" && (await isFeatureEnabled(admin, chatRow.id, "crocodile"))) {
+      const top = await getCrocodileGuessTop(admin, chatRow.id, 10);
+      await telegram.sendMessage(chatId, formatCrocodileTopMessage(top));
       return;
     }
     if (cmd === "/taboo" && (await isFeatureEnabled(admin, chatRow.id, "taboo"))) {
@@ -1732,8 +1755,21 @@ async function handleGroupMessage(
       (await isFeatureEnabled(admin, chatRow.id, "red_button"))
     ) {
       const r = await startRedButton(ctx, { id: message.from!.id, name: fromName });
-      if ((r as any).alreadyActive)
-        await telegram.sendMessage(chatId, await activeGameBlockingMessage(admin, chatRow.id));
+      if ((r as any).cooldown) {
+        await telegram.sendMessage(
+          chatId,
+          `💣 Подожди ${(r as any).secondsLeft} сек — кнопка остывает после прошлого раунда.`,
+        );
+        return;
+      }
+      if ((r as any).alreadyActive) {
+        await telegram.sendMessage(
+          chatId,
+          (r as any).sameType
+            ? "💣 Красная кнопка уже активна — жми на кнопку в чате или подожди."
+            : await activeGameBlockingMessage(admin, chatRow.id),
+        );
+      }
       return;
     }
     if (
@@ -1880,15 +1916,7 @@ async function handleGroupMessage(
     }
     if (cmd === "/leaderboard") {
       const top = await getLeaderboard(admin, chatRow.id, 10);
-      if (top.length === 0) {
-        await telegram.sendMessage(chatId, "Лидерборд пуст.");
-        return;
-      }
-      const lines = top.map(
-        (m, i) =>
-          `${i + 1}. ${m.display_name || (m.username ? `@${m.username}` : `#${m.telegram_user_id}`)} — ${m.coins} 🪙`,
-      );
-      await telegram.sendMessage(chatId, `🏆 <b>Лидерборд БешКоинов</b>\n${lines.join("\n")}`);
+      await telegram.sendMessage(chatId, formatLeaderboardMessage(top));
       return;
     }
     if (cmd === "/tumba" && (await isFeatureEnabled(admin, chatRow.id, "tumba"))) {
@@ -2002,9 +2030,10 @@ async function handleGroupMessage(
     if (mash) await telegram.sendMessage(chatId, mash);
   }
 
-  const mentionsBot =
+  const mentionsBot = Boolean(
     (botUsername && text.toLowerCase().includes(`@${botUsername.toLowerCase()}`)) ||
-    message.reply_to_message?.from?.is_bot;
+      message.reply_to_message?.from?.is_bot,
+  );
 
   if (mentionsBot && text.trim()) {
     const cleanTextForIntent = botUsername
@@ -2033,7 +2062,7 @@ async function handleGroupMessage(
   }
 
   if (mentionsBot && (settings?.ai_replies_enabled ?? true) && text.trim()) {
-    const tone = settings?.tone ?? "Chill bro vibe, playful banter, never preachy.";
+    const tone = settings?.tone ?? DEFAULT_AI_TONE;
     const cleanText = botUsername
       ? text.replace(new RegExp(`@${botUsername}`, "gi"), "").trim()
       : text;
@@ -2050,6 +2079,22 @@ async function handleGroupMessage(
       .from("bot_settings")
       .update({ last_bot_message_at: new Date().toISOString() })
       .eq("id", settings?.id);
+    return;
+  }
+
+  if (
+    text.trim() &&
+    message.from &&
+    settings &&
+    (await handleNamePingConversation(admin, {
+      telegramChatId: chatId,
+      settings,
+      message,
+      text,
+      lang,
+      mentionsBot,
+    }))
+  ) {
     return;
   }
 

@@ -1,4 +1,5 @@
 import { telegram, inlineKeyboard } from "@/lib/telegram.server";
+import { lookupMemberTag } from "@/lib/member-tag.server";
 import { awardCoins } from "@/lib/economy.server";
 import {
   createSession,
@@ -66,9 +67,10 @@ export async function handleTruthOrDareCallback(
       callbackQueryId,
       action === "truth" ? "Правда!" : "Действие!",
     );
+    const playerTag = await lookupMemberTag(ctx.admin, ctx.chatId, fromUserId, { name: fromName });
     await telegram.sendMessage(
       ctx.telegramChatId,
-      `${fromName}, выбирай уровень фанта:`,
+      `${playerTag}, выбирай уровень фанта:`,
       {
         reply_markup: inlineKeyboard([
           [
@@ -93,9 +95,12 @@ export async function handleTruthOrDareCallback(
     await telegram.answerCallbackQuery(callbackQueryId, "Держи фант!");
     await awardCoins(ctx.admin, ctx.chatId, fromUserId, 10, "game_win", { game: "truth_or_dare" });
     await finishSession(ctx.admin, session.id, { ...session.state, difficulty: action, prompt });
+    const playerTag = await lookupMemberTag(ctx.admin, ctx.chatId, fromUserId, {
+      name: session.state.targetName ?? fromName,
+    });
     await telegram.sendMessage(
       ctx.telegramChatId,
-      `${session.state.targetName}, вот твой фант:\n\n<i>${prompt}</i>\n\n+10 БешКоинов за участие!`,
+      `${playerTag}, вот твой фант:\n\n<i>${prompt}</i>\n\n+10 БешКоинов за участие!`,
     );
   }
 }

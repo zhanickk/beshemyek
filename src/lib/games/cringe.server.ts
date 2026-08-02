@@ -1,4 +1,5 @@
 import { telegram, inlineKeyboard, tgDisplayName } from "@/lib/telegram.server";
+import { lookupMemberTag } from "@/lib/member-tag.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { awardCoins } from "@/lib/economy.server";
 import { truncateBtn } from "@/lib/keyboards.server";
@@ -220,10 +221,12 @@ async function revealCringeAnswer(
   voterId: number,
   pickedId: string,
 ) {
-  const subjectId = String(session.state.subjectId);
-  const subjectName =
-    session.state.candidates.find((c: any) => String(c.id) === subjectId)?.name ?? "Участник чата";
-  const correct = pickedId === subjectId;
+  const subjectId = Number(session.state.subjectId);
+  const subjectCandidate = session.state.candidates.find((c: any) => String(c.id) === String(subjectId));
+  const subjectTag = await lookupMemberTag(ctx.admin, ctx.chatId, subjectId, {
+    name: subjectCandidate?.name ?? "участник",
+  });
+  const correct = pickedId === String(subjectId);
   if (correct) {
     await awardCoins(ctx.admin, ctx.chatId, voterId, 10, "game_win", {
       game: session.state.mode ?? "cringe",
@@ -231,11 +234,14 @@ async function revealCringeAnswer(
   }
   await finishSession(ctx.admin, session.id, { ...session.state, revealed: true, winnerId: voterId });
   const msgId = session.state.messageId;
+  const guessLine = correct
+    ? `🎯 ${await lookupMemberTag(ctx.admin, ctx.chatId, voterId)} угадал(а)! +10 БешКоинов.`
+    : "❌ Мимо, но теперь все знают правду.";
   const body =
     `${LABELS[(session.state.mode ?? "cringe") as CringeMode].intro}\n\n` +
     `«${session.state.quoteText}»\n\n` +
-    `✅ <b>Правильный ответ:</b> ${subjectName}\n` +
-    (correct ? "🎯 Угадал(а)! +10 БешКоинов." : "❌ Мимо, но теперь все знают правду.");
+    `✅ <b>Правильный ответ:</b> ${subjectTag}\n` +
+    guessLine;
   if (msgId) {
     await telegram.editMessageText(ctx.telegramChatId, msgId, body);
   } else {
@@ -262,15 +268,17 @@ export async function handleCringeCallback(
 export async function tickCringe(ctx: GameCtx, session: GameSession) {
   if (session.state.revealed) return;
   if (new Date(session.state.deadlineAt).getTime() > Date.now()) return;
-  const subjectId = String(session.state.subjectId);
-  const subjectName =
-    session.state.candidates.find((c: any) => String(c.id) === subjectId)?.name ?? "Участник чата";
+  const subjectId = Number(session.state.subjectId);
+  const subjectCandidate = session.state.candidates.find((c: any) => String(c.id) === String(subjectId));
+  const subjectTag = await lookupMemberTag(ctx.admin, ctx.chatId, subjectId, {
+    name: subjectCandidate?.name ?? "участник",
+  });
   await finishSession(ctx.admin, session.id, session.state);
   const msgId = session.state.messageId;
   const body =
     `${LABELS[(session.state.mode ?? "cringe") as CringeMode].intro}\n\n` +
     `«${session.state.quoteText}»\n\n` +
-    `⏰ Время вышло. <b>Правильный ответ:</b> ${subjectName}`;
+    `⏰ Время вышло. <b>Правильный ответ:</b> ${subjectTag}`;
   if (msgId) await telegram.editMessageText(ctx.telegramChatId, msgId, body);
   else await telegram.sendMessage(ctx.telegramChatId, body);
 }

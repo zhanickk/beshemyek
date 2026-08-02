@@ -54,7 +54,7 @@ export const ALL_FEATURE_KEYS: FeatureKey[] = [
 /** Human-readable label + short description + how to trigger, per feature. */
 export const FEATURE_INFO: Record<FeatureKey, { label: string; how: string }> = {
   mafia: { label: "🔪 Мафия", how: "/mafia или «го в мафию»" },
-  crocodile: { label: "🐊 Крокодил", how: "/crocodile" },
+  crocodile: { label: "🐊 Крокодил", how: "/crocodile, /crocotop" },
   truth_or_dare: { label: "🎯 Правда или действие", how: "/truth_or_dare, /pod" },
   taboo: { label: "🚫 Табу", how: "/taboo" },
   cringe: { label: "😬 Кто этот Кринж", how: "/cringe (ответом на сообщение)" },

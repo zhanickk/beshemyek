@@ -1,8 +1,10 @@
 import { telegram, inlineKeyboard } from "@/lib/telegram.server";
+import { lookupMemberTags } from "@/lib/member-tag.server";
 import { awardCoins, spendCoins } from "@/lib/economy.server";
 import { truncateBtn } from "@/lib/keyboards.server";
 import {
   createSession,
+  getActiveSession,
   getBlockingSession,
   finishSession,
   updateSessionState,
@@ -164,9 +166,11 @@ export async function resolveTotalizator(ctx: GameCtx, winningOption: number) {
     const share = Math.floor(pool / winners.length);
     for (const id of winners)
       await awardCoins(ctx.admin, ctx.chatId, id, share, "game_win", { game: "totalizator" });
+    const tags = await lookupMemberTags(ctx.admin, ctx.chatId, winners);
+    const winnerLine = winners.map((id) => tags.get(id)!).join(", ");
     await telegram.sendMessage(
       ctx.telegramChatId,
-      `🎰 Победил вариант «${session.state.options[winningOption]}»! Победители (${winners.length}) получили по +${share} БешКоинов.`,
+      `🎰 Победил вариант «${session.state.options[winningOption]}»!\n🏆 ${winnerLine} — по +${share} БешКоинов.`,
     );
   }
   await finishSession(ctx.admin, session.id, { ...session.state, winningOption });

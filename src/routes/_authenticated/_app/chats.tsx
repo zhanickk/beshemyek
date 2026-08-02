@@ -10,6 +10,7 @@ import {
   setChatFeature,
   setBotPaused,
   sendBotChatMessage,
+  removeChat,
 } from "@/lib/bot.functions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -24,8 +25,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Moon, Send, Sun } from "lucide-react";
+import { Moon, Send, Sun, Trash2 } from "lucide-react";
 
 const FEATURE_LABELS: Record<string, string> = {
   mafia: "🔪 Мафия",
@@ -128,6 +140,52 @@ function BotMessageSender({ chatId }: { chatId: string }) {
   );
 }
 
+function RemoveChatButton({
+  chatId,
+  title,
+  onRemoved,
+}: {
+  chatId: string;
+  title: string;
+  onRemoved: () => void;
+}) {
+  const remove = useServerFn(removeChat);
+  const mut = useMutation({
+    mutationFn: () => remove({ data: { chat_id: chatId } }),
+    onSuccess: () => {
+      toast.success("Чат убран из списка");
+      onRemoved();
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button size="sm" variant="destructive">
+          <Trash2 className="w-3 h-3 mr-2" />
+          Убрать чат
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Убрать «{title}»?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Чат исчезнет из дашборда и бот перестанет его обрабатывать. Активные игры в этом чате
+            будут отменены. Если снова добавишь бота в группу — чат вернётся автоматически.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Отмена</AlertDialogCancel>
+          <AlertDialogAction onClick={() => mut.mutate()} disabled={mut.isPending}>
+            Убрать
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 function ChatsPage() {
   const list = useServerFn(listChats);
   const update = useServerFn(updateChatSettings);
@@ -193,13 +251,20 @@ function ChatsPage() {
                     {chat.chat_type} · ID {chat.telegram_chat_id}
                   </CardDescription>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => sendMut.mutate(chat.telegram_chat_id)}
-                >
-                  <Send className="w-3 h-3 mr-2" /> Send prompt now
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => sendMut.mutate(chat.telegram_chat_id)}
+                  >
+                    <Send className="w-3 h-3 mr-2" /> Send prompt now
+                  </Button>
+                  <RemoveChatButton
+                    chatId={chat.id}
+                    title={chat.title ?? "Untitled chat"}
+                    onRemoved={() => qc.invalidateQueries({ queryKey: ["chats"] })}
+                  />
+                </div>
               </div>
             </CardHeader>
             <CardContent className="grid md:grid-cols-2 gap-4">

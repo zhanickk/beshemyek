@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { telegram, inlineKeyboard, tgDisplayName } from "@/lib/telegram.server";
+import { lookupMemberTag, lookupMemberTags, playerTag } from "@/lib/member-tag.server";
 import { truncateBtn } from "@/lib/keyboards.server";
 import { awardCoins } from "@/lib/economy.server";
 import {
@@ -115,7 +116,7 @@ export async function finalizeTwoTruths(
   ]);
   await telegram.sendMessage(
     chatRow.telegram_chat_id,
-    `🎭 <b>Два правды и одна ложь</b>\n<b>${submitterName}</b> прислал(а) 3 факта. Угадайте, какой — ложь!\n\n${facts.map((f, i) => `${LETTERS[i]}. ${f}`).join("\n")}\n\nУ вас ${ROUND_MS / 60000} минут.`,
+    `🎭 <b>Два правды и одна ложь</b>\n${await lookupMemberTag(admin, chatId, dialog.telegram_user_id, { name: submitterName })} прислал(а) 3 факта. Угадайте, какой — ложь!\n\n${facts.map((f, i) => `${LETTERS[i]}. ${f}`).join("\n")}\n\nУ вас ${ROUND_MS / 60000} минут.`,
     { reply_markup: inlineKeyboard(rows) },
   );
   await admin.from("bot_dialogs").delete().eq("telegram_user_id", dialog.telegram_user_id);
@@ -161,10 +162,21 @@ export async function tickTwoTruths(ctx: GameCtx, session: GameSession) {
     game: "two_truths_submitter",
   });
   await finishSession(ctx.admin, session.id, session.state);
+  const tags = await lookupMemberTags(ctx.admin, ctx.chatId, [
+    session.state.submitterId,
+    ...winners,
+  ]);
+  const submitterTag =
+    tags.get(session.state.submitterId) ??
+    playerTag({ id: session.state.submitterId, name: session.state.submitterName ?? "участник" });
+  const winnersLine =
+    winners.length > 0
+      ? `Угадали: ${winners.map((id) => tags.get(id) ?? playerTag({ id })).join(", ")} (+10 БешКоинов)`
+      : "Никто не угадал!";
   await telegram.sendMessage(
     ctx.telegramChatId,
     `Ложью был вариант <b>${LETTERS[Number(lieIndex)]}</b>: «${session.state.facts[Number(lieIndex)]}»\n` +
-      `Автор: <b>${session.state.submitterName ?? "участник"}</b>\n` +
-      `${winners.length > 0 ? `Угадали: ${winners.length} чел. (+10 БешКоинов)` : "Никто не угадал!"}`,
+      `Автор: ${submitterTag}\n` +
+      winnersLine,
   );
 }

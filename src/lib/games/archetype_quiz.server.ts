@@ -26,7 +26,7 @@ async function sendQuestion(
   session: GameSession,
   state: Record<string, unknown> = session.state,
 ) {
-  const q = state.questions[state.currentIndex as number];
+  const q = (state.questions as any[])[state.currentIndex as number];
   const sent: any = await telegram.sendMessage(
     ctx.telegramChatId,
     `<b>Вопрос ${(state.currentIndex as number) + 1}/${(state.questions as unknown[]).length}:</b> ${q.question}`,

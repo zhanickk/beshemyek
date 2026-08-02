@@ -25,6 +25,7 @@ export {
   buildFeaturesItemKeyboard,
   getMenuItem,
   findMenuItem,
+  INSTANT_ECONOMY_MENU_IDS,
   MENU_BY_CATEGORY,
   type FeatureCategory,
   type FeatureMenuId,

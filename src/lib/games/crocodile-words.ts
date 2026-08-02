@@ -367,6 +367,7 @@ export function randomCrocodileWord(exclude: string[] = []) {
 }
 
 export function containsWord(text: string, word: string): boolean {
+  if (!text?.trim() || !word?.trim()) return false;
   const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const re = new RegExp(`(^|\\W)${escaped}(\\W|$)`, "iu");
   return re.test(text);

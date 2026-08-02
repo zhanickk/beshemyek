@@ -47,6 +47,7 @@ export type Database = {
           is_paused: boolean;
           language: string;
           last_bot_message_at: string | null;
+          name_ping_state: Json | null;
           next_checkin_at: string | null;
           next_engagement_at: string | null;
           paused_until: string | null;
@@ -72,6 +73,7 @@ export type Database = {
           is_paused?: boolean;
           language?: string;
           last_bot_message_at?: string | null;
+          name_ping_state?: Json | null;
           next_checkin_at?: string | null;
           next_engagement_at?: string | null;
           paused_until?: string | null;
@@ -97,6 +99,7 @@ export type Database = {
           is_paused?: boolean;
           language?: string;
           last_bot_message_at?: string | null;
+          name_ping_state?: Json | null;
           next_checkin_at?: string | null;
           next_engagement_at?: string | null;
           paused_until?: string | null;
@@ -315,6 +318,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "chat_features_chat_id_fkey";
+            columns: ["chat_id"];
+            isOneToOne: false;
+            referencedRelation: "chats";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      game_sessions: {
+        Row: {
+          chat_id: string;
+          created_at: string;
+          created_by: number | null;
+          id: string;
+          short_code: string;
+          state: Json;
+          status: string;
+          type: string;
+          updated_at: string;
+        };
+        Insert: {
+          chat_id: string;
+          created_at?: string;
+          created_by?: number | null;
+          id?: string;
+          short_code: string;
+          state?: Json;
+          status?: string;
+          type: string;
+          updated_at?: string;
+        };
+        Update: {
+          chat_id?: string;
+          created_at?: string;
+          created_by?: number | null;
+          id?: string;
+          short_code?: string;
+          state?: Json;
+          status?: string;
+          type?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "game_sessions_chat_id_fkey";
             columns: ["chat_id"];
             isOneToOne: false;
             referencedRelation: "chats";

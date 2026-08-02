@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateText } from "ai";
 import { createDeepSeekProvider, getDeepSeekModel } from "@/lib/ai-gateway.server";
-import { telegram, inlineKeyboard } from "@/lib/telegram.server";
+import { telegram, inlineKeyboard, chatMemberTag, tgUserMention } from "@/lib/telegram.server";
 import { isFeatureEnabled } from "@/lib/features.server";
 import { buildChatStyleBlock } from "@/lib/chat-style.server";
 import { truncateBtn } from "@/lib/btn-label.server";
@@ -30,6 +30,7 @@ export interface CheckinSession {
   relay_from_user_id?: number | null;
   target_tagged_at?: string | null;
   created_at?: string;
+  updated_at?: string;
 }
 
 type MemberRow = {
@@ -39,7 +40,7 @@ type MemberRow = {
 };
 
 function memberTag(m: { username: string | null; display_name: string | null; telegram_user_id: number }) {
-  return m.username ? `@${m.username}` : m.display_name || `#${m.telegram_user_id}`;
+  return chatMemberTag(m);
 }
 
 function formatCheckinPrompt(
@@ -243,7 +244,9 @@ export async function processCheckinTimeout(
   }
 
   const failedMember = await getMember(admin, session.chat_id, session.target_user_id);
-  const failedTag = failedMember ? memberTag(failedMember) : `#${session.target_user_id}`;
+  const failedTag = failedMember
+    ? memberTag(failedMember)
+    : tgUserMention({ id: session.target_user_id });
 
   const answered = [...(session.answered_user_ids ?? [])];
   const newAnswered = answered.filter((id) => id !== fallback);
@@ -261,7 +264,7 @@ export async function processCheckinTimeout(
     .eq("id", session.id);
 
   const targetMember = await getMember(admin, session.chat_id, fallback);
-  const targetTag = targetMember ? memberTag(targetMember) : `#${fallback}`;
+  const targetTag = targetMember ? memberTag(targetMember) : tgUserMention({ id: fallback });
 
   const updated: CheckinSession = {
     ...session,
@@ -294,7 +297,7 @@ export async function tickCheckinTimeouts(admin: SupabaseClient, chatId?: string
   const { data: active } = await query;
   const now = Date.now();
   for (const row of active ?? []) {
-    const session = row as CheckinSession;
+    const session = row as unknown as CheckinSession;
     if (!isCheckinResponseDue(session, now)) continue;
     try {
       await processCheckinTimeout(

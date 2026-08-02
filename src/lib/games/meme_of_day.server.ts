@@ -1,4 +1,5 @@
 import { telegram, inlineKeyboard } from "@/lib/telegram.server";
+import { lookupMemberTags } from "@/lib/member-tag.server";
 import { awardCoins } from "@/lib/economy.server";
 import {
   createSession,
@@ -122,8 +123,14 @@ export async function tickMemeOfDay(ctx: GameCtx, session: GameSession) {
   for (const w of winners) {
     await awardCoins(ctx.admin, ctx.chatId, w.userId, 30, "game_win", { game: "meme_of_day" });
   }
+  const tags = await lookupMemberTags(
+    ctx.admin,
+    ctx.chatId,
+    winners.map((w) => w.userId),
+  );
+  const winnerLine = winners.map((w) => tags.get(w.userId) ?? w.userName).join(", ");
   await telegram.sendMessage(
     ctx.telegramChatId,
-    `🏆 <b>Мем дня:</b> ${winners.map((w) => w.userName).join(", ")} с ${maxVotes} 🔥! +30 БешКоинов.`,
+    `🏆 <b>Мем дня:</b> ${winnerLine} с ${maxVotes} 🔥! +30 БешКоинов.`,
   );
 }

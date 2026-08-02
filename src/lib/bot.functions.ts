@@ -14,6 +14,7 @@ export const listChats = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("chats")
       .select("*, bot_settings(*)")
+      .eq("is_active", true)
       .order("joined_at", { ascending: false });
     if (error) throw error;
     return data;
@@ -119,6 +120,24 @@ export const updateChatSettings = createServerFn({ method: "POST" })
         .eq("chat_id", chat_id);
       if (error) throw error;
     }
+    return { ok: true };
+  });
+
+export const removeChat = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ chat_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context as any);
+    await context.supabase
+      .from("game_sessions")
+      .update({ status: "cancelled" })
+      .eq("chat_id", data.chat_id)
+      .in("status", ["waiting", "active"]);
+    const { error } = await context.supabase
+      .from("chats")
+      .update({ is_active: false })
+      .eq("id", data.chat_id);
+    if (error) throw error;
     return { ok: true };
   });
 
@@ -396,14 +415,24 @@ export const listLeaderboard = createServerFn({ method: "GET" })
   .inputValidator((d: unknown) => z.object({ chat_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     await requireAdmin(context as any);
-    const { data: rows, error } = await context.supabase
+    const { getAdmin } = await import("@/lib/supabase-admin.server");
+    const { getBalance } = await import("@/lib/economy.server");
+    const admin = getAdmin();
+    const { data: rows, error } = await admin
       .from("chat_members")
       .select("*")
       .eq("chat_id", data.chat_id)
       .order("coins", { ascending: false })
       .limit(50);
     if (error) throw error;
-    return rows ?? [];
+    const members = rows ?? [];
+    await Promise.all(
+      members.map(async (row) => {
+        row.coins = await getBalance(admin, data.chat_id, row.telegram_user_id);
+      }),
+    );
+    members.sort((a, b) => (b.coins ?? 0) - (a.coins ?? 0));
+    return members;
   });
 
 export const adjustMemberCoins = createServerFn({ method: "POST" })
@@ -415,9 +444,10 @@ export const adjustMemberCoins = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await requireAdmin(context as any);
+    const { getAdmin } = await import("@/lib/supabase-admin.server");
     const { awardCoins } = await import("@/lib/economy.server");
     await awardCoins(
-      context.supabase as any,
+      getAdmin(),
       data.chat_id,
       data.telegram_user_id,
       data.delta,
