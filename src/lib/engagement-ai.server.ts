@@ -14,7 +14,7 @@ const FALLBACK_SILENCE = [
 /** Fresh line to break silence — AI when possible, else fallback. */
 export async function generateEngagementLine(
   kind: EngagementKind,
-  opts?: { memberName?: string | null; chatSnippet?: string },
+  opts?: { chatSnippet?: string },
 ): Promise<string> {
   const key = process.env.DEEPSEEK_API_KEY;
   if (!key) {
@@ -23,8 +23,10 @@ export async function generateEngagementLine(
 
   const style = buildChatStyleBlock();
   const prompts: Record<EngagementKind, string> = {
-    silence: `Чат молчит 2+ часа днём. Напиши ОДНУ короткую реплику чтобы расшевелить (1-2 предложения макс). Можно: вопрос, подкол, брейнрот, трэш — СВЕЖЕЕ, не шаблон. ${opts?.memberName ? `Можешь мягко кольнуть ${opts.memberName}.` : ""}`,
-    nabros: `Случайный вброс в активный треш-чат. Одна короткая живая реплика, СВЕЖАЯ. ${opts?.memberName ? `Можно обратиться к ${opts.memberName}.` : ""}`,
+    // Caller prepends a real @tag/mention in front of this line separately (never ask the
+    // model to name someone itself — it can't produce a working tg://user mention, only text).
+    silence: `Чат молчит 2+ часа днём. Напиши ОДНУ короткую реплику чтобы расшевелить (1-2 предложения макс). Можно: вопрос, подкол, брейнрот, трэш — СВЕЖЕЕ, не шаблон. Не обращайся по имени — реплика начнётся с тега человека отдельно.`,
+    nabros: `Случайный вброс в активный треш-чат. Одна короткая живая реплика, СВЕЖАЯ. Не обращайся по имени — реплика начнётся с тега человека отдельно.`,
     chime_in: `Люди активно общаются БЕЗ бота. Если есть что уместно вкинуть (шутка, мнение, подкол) — одна короткая реплика в стиле чата. Если НЕ уверен что уместно — ответь ровно SKIP и больше ничего.`,
   };
 

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { telegram } from "@/lib/telegram.server";
+import { telegram, chatMemberTag } from "@/lib/telegram.server";
 import { pickSticker } from "@/lib/stickers.server";
 import { isFeatureEnabled } from "@/lib/features.server";
 import { generateEngagementLine } from "@/lib/engagement-ai.server";
@@ -125,11 +125,15 @@ async function runEngagementTickForChat(
   // Silence breaker: 2–4h no human messages during working hours
   if (!botSpokeLast && silentFor > silenceMs && !quiet && working) {
     const member = await pickNudgeMember(admin, chat.id);
-    const name = member?.display_name || (member?.username ? `@${member.username}` : null);
-    const text =
-      Math.random() < 0.65
-        ? await generateEngagementLine("silence", { memberName: name })
-        : NABROS_TEMPLATES[Math.floor(Math.random() * NABROS_TEMPLATES.length)](name);
+    const tag = member ? chatMemberTag(member) : null;
+    const useAi = Math.random() < 0.65;
+    const line = useAi
+      ? await generateEngagementLine("silence")
+      : NABROS_TEMPLATES[Math.floor(Math.random() * NABROS_TEMPLATES.length)](tag);
+    // Templates already weave the tag into their own phrasing; the AI line doesn't
+    // know about the member at all, so prepend the real tg://user mention in front —
+    // never just the plain display name, that doesn't notify or link anyone.
+    const text = useAi && tag ? `${tag}, ${line}` : line;
     await telegram.sendChatAction(chat.telegram_chat_id, "typing");
     await telegram.sendMessage(chat.telegram_chat_id, text);
     await admin
@@ -142,11 +146,12 @@ async function runEngagementTickForChat(
   const nextAt = s.next_engagement_at ? new Date(s.next_engagement_at).getTime() : 0;
   if (nextAt && now >= nextAt && !quiet && working) {
     const member = await pickNudgeMember(admin, chat.id);
-    const name = member?.display_name || (member?.username ? `@${member.username}` : null);
-    const text =
-      Math.random() < 0.5
-        ? await generateEngagementLine("nabros", { memberName: name })
-        : NABROS_TEMPLATES[Math.floor(Math.random() * NABROS_TEMPLATES.length)](name);
+    const tag = member ? chatMemberTag(member) : null;
+    const useAi = Math.random() < 0.5;
+    const line = useAi
+      ? await generateEngagementLine("nabros")
+      : NABROS_TEMPLATES[Math.floor(Math.random() * NABROS_TEMPLATES.length)](tag);
+    const text = useAi && tag ? `${tag}, ${line}` : line;
     await telegram.sendChatAction(chat.telegram_chat_id, "typing");
     await telegram.sendMessage(chat.telegram_chat_id, text);
     await admin

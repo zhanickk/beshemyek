@@ -422,6 +422,21 @@ function ChatsPage() {
                   }
                 />
               </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Авто-чекин</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Бот сам запускает чекин А/Б по расписанию (раз в ~6 часов). Выключи, если
+                    достаёт — команда <code>/checkin</code> и ответы на неё продолжат работать.
+                  </p>
+                </div>
+                <Switch
+                  checked={s.auto_checkin_enabled ?? true}
+                  onCheckedChange={(v) =>
+                    updateMut.mutate({ chat_id: chat.id, auto_checkin_enabled: v })
+                  }
+                />
+              </div>
               <div className="space-y-1">
                 <Label>Тишина до вброса (мин)</Label>
                 <Input

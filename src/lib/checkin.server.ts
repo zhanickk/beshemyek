@@ -614,6 +614,7 @@ export async function runCheckinTick(admin: SupabaseClient) {
         ? (chat as any).bot_settings[0]
         : (chat as any).bot_settings;
       if (!s || s.is_paused) continue;
+      if (s.auto_checkin_enabled === false) continue;
 
       const nextAt = s.next_checkin_at ? new Date(s.next_checkin_at).getTime() : 0;
       if (nextAt && now < nextAt) continue;

@@ -40,6 +40,7 @@ export type Database = {
           ai_replies_enabled: boolean;
           allow_concurrent_games: boolean;
           allow_member_endgame: boolean;
+          auto_checkin_enabled: boolean;
           chat_id: string;
           id: string;
           ignored_pout_sent: boolean;
@@ -66,6 +67,7 @@ export type Database = {
           ai_replies_enabled?: boolean;
           allow_concurrent_games?: boolean;
           allow_member_endgame?: boolean;
+          auto_checkin_enabled?: boolean;
           chat_id: string;
           id?: string;
           ignored_pout_sent?: boolean;
@@ -92,6 +94,7 @@ export type Database = {
           ai_replies_enabled?: boolean;
           allow_concurrent_games?: boolean;
           allow_member_endgame?: boolean;
+          auto_checkin_enabled?: boolean;
           chat_id?: string;
           id?: string;
           ignored_pout_sent?: boolean;
