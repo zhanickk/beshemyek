@@ -416,8 +416,12 @@ export const listLeaderboard = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     await requireAdmin(context as any);
     const { getAdmin } = await import("@/lib/supabase-admin.server");
-    const { getBalance } = await import("@/lib/economy.server");
     const admin = getAdmin();
+    // chat_members.coins is kept canonical by syncMemberCoins() on every
+    // awardCoins() write, so it can be read directly here — no need to
+    // recompute each row from the ledger (that used to fan out into 2-3
+    // Supabase requests per member, which blew past Cloudflare Workers'
+    // per-request subrequest limit on chats with 25+ members).
     const { data: rows, error } = await admin
       .from("chat_members")
       .select("*")
@@ -425,14 +429,7 @@ export const listLeaderboard = createServerFn({ method: "GET" })
       .order("coins", { ascending: false })
       .limit(50);
     if (error) throw error;
-    const members = rows ?? [];
-    await Promise.all(
-      members.map(async (row) => {
-        row.coins = await getBalance(admin, data.chat_id, row.telegram_user_id);
-      }),
-    );
-    members.sort((a, b) => (b.coins ?? 0) - (a.coins ?? 0));
-    return members;
+    return rows ?? [];
   });
 
 export const adjustMemberCoins = createServerFn({ method: "POST" })
