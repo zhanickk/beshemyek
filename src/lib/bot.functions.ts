@@ -13,7 +13,7 @@ export const listChats = createServerFn({ method: "GET" })
     await requireAdmin(context as any);
     const { data, error } = await context.supabase
       .from("chats")
-      .select("*, bot_settings(*)")
+      .select("*, bot_settings(*), chat_members(count)")
       .eq("is_active", true)
       .order("joined_at", { ascending: false });
     if (error) throw error;

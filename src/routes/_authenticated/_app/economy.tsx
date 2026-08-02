@@ -47,7 +47,14 @@ function EconomyPage() {
   const { data: chats } = useQuery({ queryKey: ["chats"], queryFn: () => listChatsFn() });
   const [chatId, setChatId] = useState<string>("");
   const [amountByUser, setAmountByUser] = useState<Record<number, string>>({});
-  const activeChatId = chatId || chats?.[0]?.id || "";
+  const memberCount = (c: any) => c?.chat_members?.[0]?.count ?? 0;
+  // Default to the chat with the most members (the "real" active chat), not
+  // just whichever one joined most recently — a fresh test group otherwise
+  // wins the default slot and the actual community's coins look "missing".
+  const busiestChatId = chats?.length
+    ? [...chats].sort((a, b) => memberCount(b) - memberCount(a))[0].id
+    : "";
+  const activeChatId = chatId || busiestChatId;
 
   const parseAmount = (userId: number) => {
     const raw = amountByUser[userId]?.trim();
@@ -102,7 +109,7 @@ function EconomyPage() {
               <SelectContent>
                 {chats?.map((c: any) => (
                   <SelectItem key={c.id} value={c.id}>
-                    {c.title ?? "Untitled"}
+                    {c.title ?? "Untitled"} ({memberCount(c)})
                   </SelectItem>
                 ))}
               </SelectContent>
