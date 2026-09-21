@@ -1,6 +1,7 @@
 import { generateText } from "ai";
 import { createDeepSeekProvider, getDeepSeekModel } from "@/lib/ai-gateway.server";
 import { buildChatStyleBlock } from "@/lib/chat-style.server";
+import { stripLongDashes } from "@/lib/text-format.server";
 
 export type EngagementKind = "silence" | "chime_in" | "nabros";
 
@@ -37,7 +38,7 @@ export async function generateEngagementLine(
       system: `Ты Beshemyek Bratan — чуть дерзковат, по-дружески. ${style}\nКаждый раз новые формулировки, не повторяй шаблоны. Только русский.`,
       prompt: `${prompts[kind]}${opts?.chatSnippet ? `\n\nКонтекст чата:\n${opts.chatSnippet}` : ""}`,
     });
-    const out = text?.trim() || "";
+    const out = stripLongDashes(text?.trim() || "");
     if (kind === "chime_in" && (/^skip$/i.test(out) || out.length < 3)) return "SKIP";
     return out || FALLBACK_SILENCE[Math.floor(Math.random() * FALLBACK_SILENCE.length)];
   } catch (e) {

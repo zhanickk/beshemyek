@@ -3,6 +3,7 @@ import { generateText } from "ai";
 import { telegram, inlineKeyboard, buildDeepLink, chatMemberTag } from "@/lib/telegram.server";
 import { createDeepSeekProvider, getDeepSeekModel } from "@/lib/ai-gateway.server";
 import { moderateText } from "@/lib/moderation.server";
+import { stripLongDashes } from "@/lib/text-format.server";
 import { isFeatureEnabled } from "@/lib/features.server";
 
 export type TumbaCategory = "confession" | "compliment" | "question" | "ship" | "ama";
@@ -267,10 +268,11 @@ async function formatTumbaDigest(
 - Нумерованный список сахарков с прикольными мини-заголовками и эмодзи-разделителями
 - Тексты сахарков (поле body) сохраняй ДОСЛОВНО — не переписывай
 - К ОДНОМУ сахарку добавь короткий шуточный «редакционный комментарий» от бота
-- HTML: <b>, <i>. Без markdown. Компактно, живо`,
+- HTML: <b>, <i>. Без markdown. Компактно, живо
+- Никогда не используй тире «—»/«–» в тексте вступления и комментария — запятая или точка вместо него`,
       prompt: `Сахарки (уже перемешаны, нумеруй 1..N как в данных):\n${JSON.stringify(items, null, 2)}`,
     });
-    const out = text?.trim();
+    const out = stripLongDashes(text?.trim() || "");
     if (out && out.length > 80) return out;
   } catch (e) {
     console.error("formatTumbaDigest AI failed", e);

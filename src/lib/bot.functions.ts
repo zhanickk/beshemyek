@@ -183,6 +183,7 @@ export const sendBotChatMessage = createServerFn({ method: "POST" })
     const { telegram } = await import("@/lib/telegram.server");
     const { generateText } = await import("ai");
     const { createDeepSeekProvider, getDeepSeekModel } = await import("@/lib/ai-gateway.server");
+    const { stripLongDashes } = await import("@/lib/text-format.server");
 
     let out = data.instruction.trim();
     const key = process.env.DEEPSEEK_API_KEY;
@@ -193,10 +194,11 @@ export const sendBotChatMessage = createServerFn({ method: "POST" })
           model: provider(getDeepSeekModel()),
           system: `Ты Beshemyek Bratan — бот локалки AIESEC. Админ просит отправить сообщение в групповой чат.
 Сформулируй короткое живое сообщение по его инструкции (напоминание, анонс, мотивашка и т.д.).
-Говори от первого лица бота. HTML: <b>, <i>. Без markdown. 1–4 предложения.`,
+Говори от первого лица бота. HTML: <b>, <i>. Без markdown. 1–4 предложения.
+Никогда не используй тире «—»/«–» — запятая или точка вместо него.`,
           prompt: data.instruction.trim(),
         });
-        if (text?.trim()) out = text.trim();
+        if (text?.trim()) out = stripLongDashes(text.trim());
       } catch (e) {
         console.error("sendBotChatMessage AI failed", e);
       }

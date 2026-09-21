@@ -4,6 +4,7 @@ import { T, AIESEC_GLOSSARY, type Lang } from "@/lib/telegram.server";
 import { pickResponseMode, resolveResponseMode } from "@/lib/personality.server";
 import { extraContextDirective } from "@/lib/sovereign.server";
 import { buildChatStyleBlock, TRASH_CHAT_CHIME_IN_NOTE } from "@/lib/chat-style.server";
+import { stripLongDashes } from "@/lib/text-format.server";
 
 export const DEFAULT_AI_TONE =
   "Chill bro vibe, slightly cheeky and playful banter, light teasing, never preachy or toxic.";
@@ -46,7 +47,7 @@ export async function generateAiReply(
       system,
       prompt,
     });
-    return text?.trim() || T.aiFallback[lang];
+    return stripLongDashes(text?.trim() || "") || T.aiFallback[lang];
   } catch (e) {
     console.error("AI reply failed", e);
     return T.aiFallback[lang];

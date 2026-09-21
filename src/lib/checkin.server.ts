@@ -4,6 +4,7 @@ import { createDeepSeekProvider, getDeepSeekModel } from "@/lib/ai-gateway.serve
 import { telegram, inlineKeyboard, chatMemberTag, tgUserMention } from "@/lib/telegram.server";
 import { isFeatureEnabled } from "@/lib/features.server";
 import { buildChatStyleBlock } from "@/lib/chat-style.server";
+import { stripLongDashes } from "@/lib/text-format.server";
 import { truncateBtn } from "@/lib/btn-label.server";
 
 const CHECKIN_RESPONSE_MS = 20_000;
@@ -89,7 +90,11 @@ async function generateCheckinQuestion(): Promise<{ question: string; a: string;
     });
     const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
     if (parsed.question && parsed.a && parsed.b) {
-      return { question: String(parsed.question), a: String(parsed.a), b: String(parsed.b) };
+      return {
+        question: stripLongDashes(String(parsed.question)),
+        a: stripLongDashes(String(parsed.a)),
+        b: stripLongDashes(String(parsed.b)),
+      };
     }
   } catch (e) {
     console.error("generateCheckinQuestion failed", e);
