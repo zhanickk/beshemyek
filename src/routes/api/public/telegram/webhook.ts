@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { generateAiReply, DEFAULT_AI_TONE } from "@/lib/ai-reply.server";
 import { handleNamePingConversation } from "@/lib/name-ping.server";
+import { isPureLaughSpam } from "@/lib/laugh.server";
 import { handleCreatorCommand, isCreator } from "@/lib/sovereign.server";
 import {
   telegram,
@@ -2061,7 +2062,7 @@ async function handleGroupMessage(
     }
   }
 
-  if (mentionsBot && (settings?.ai_replies_enabled ?? true) && text.trim()) {
+  if (mentionsBot && (settings?.ai_replies_enabled ?? true) && text.trim() && !isPureLaughSpam(text)) {
     const tone = settings?.tone ?? DEFAULT_AI_TONE;
     const cleanText = botUsername
       ? text.replace(new RegExp(`@${botUsername}`, "gi"), "").trim()

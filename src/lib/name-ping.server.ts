@@ -2,10 +2,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { telegram, type Lang } from "@/lib/telegram.server";
 import { generateAiReply, DEFAULT_AI_TONE } from "@/lib/ai-reply.server";
 import { buildChatHistoryContext } from "@/lib/chat-context.server";
+import { isPureLaughSpam } from "@/lib/laugh.server";
 
 const IDLE_LIMIT = 10;
 
-const BESHEMYEK_NAME_RE = /беш(?:ем|м)[ьъ]?[еэ]?к|beshe?m[ye]?k|beshmek/i;
+// Full name ("бешемьек"/"бешмек") OR the bare short form "беш" as its own word
+// (word-bounded so it doesn't fire on "бешкоин"/"бешеный"/etc).
+const BESHEMYEK_NAME_RE =
+  /беш(?:ем|м)[ьъ]?[еэ]?к|beshe?m[ye]?k|beshmek|(?<![а-яёa-z])беш(?![а-яёa-z])/i;
 
 export interface NamePingState {
   userId: number;
@@ -84,6 +88,7 @@ export async function handleNamePingConversation(
   if (opts.mentionsBot) return false;
   if (!(opts.settings.ai_replies_enabled ?? true)) return false;
   if (!opts.text.trim() || !opts.message.from || opts.message.from.is_bot) return false;
+  if (isPureLaughSpam(opts.text)) return false;
 
   const tone = opts.settings.tone ?? DEFAULT_AI_TONE;
   const state = parseNamePingState(opts.settings.name_ping_state);
