@@ -1495,7 +1495,7 @@ async function handleGroupMessage(
     message.message_thread_id !== undefined
       ? { message_thread_id: message.message_thread_id }
       : {};
-  const commandName = text.split(/\\s|@/)[0].toLowerCase();
+  const commandName = text.trim().split(/[@ ]/)[0].toLowerCase();
   const isManualCrushOrPrediction = ["/crush", "/prediction", "/predictions"].includes(commandName);
 
   const chatRow = await ensureChat(admin, message.chat);
