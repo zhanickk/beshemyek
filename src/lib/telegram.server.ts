@@ -82,7 +82,7 @@ export function resolveLang(
 
 export const T = {
   help: {
-    ru: "Привет! Я Beshemyek Bratan 🤙\n\n<b>Общее</b>\n• /features — все мои функции и что включено\n• /checkin — чекин «А или Б» с тегами мемберов\n• /predictions — предсказание от Бешемека (ответом/@user — для другого)\n• /crush — случайный краш из участников чата\n\n<b>Игры</b>\n• /crocodile, /crocotop, /taboo, /truth_or_dare (/pod), /mafia\n• /cringe (ответом на сообщение), /whothis, /who_said\n• /quiz (/aiesec_quiz), /two_truths, /meme_of_day\n• /bet Вопрос | Опция1 | Опция2, /archetype, /excuse\n• /redbutton — красная кнопка (риск на коины)\n• /excuse_duel — дуэль отмазок, /duel — квиз-дуэль 1×1\n• /endgame — прервать текущую игру (для всех, если включено в дашборде)\n\n<b>Экономика</b>\n• /roast (ответом), /gift @user сумма, /shop, /balance, /leaderboard\n\n<b>Тумба / шиппинг</b>\n• /tumba, /ama, /ship_optin, /ship_optout\n\nУпомяните меня через @ или ответьте на моё сообщение — и я отвечу! Можно и просто сказать «го в мафию» или «бот, закончим игру».",
+    ru: "Привет! Я Beshemyek Bratan 🤙\n\n<b>Общее</b>\n• /features — все мои функции и что включено\n• /checkin — чекин «А или Б» с тегами мемберов\n• /prediction — предсказание (/predictions тоже работает) от Бешемека (ответом/@user — для другого)\n• /crush — случайный краш из участников чата\n\n<b>Игры</b>\n• /crocodile, /crocotop, /taboo, /truth_or_dare (/pod), /mafia\n• /cringe (ответом на сообщение), /whothis, /who_said\n• /quiz (/aiesec_quiz), /two_truths, /meme_of_day\n• /bet Вопрос | Опция1 | Опция2, /archetype, /excuse\n• /redbutton — красная кнопка (риск на коины)\n• /excuse_duel — дуэль отмазок, /duel — квиз-дуэль 1×1\n• /endgame — прервать текущую игру (для всех, если включено в дашборде)\n\n<b>Экономика</b>\n• /roast (ответом), /gift @user сумма, /shop, /balance, /leaderboard\n\n<b>Тумба / шиппинг</b>\n• /tumba, /ama, /ship_optin, /ship_optout\n\nУпомяните меня через @ или ответьте на моё сообщение — и я отвечу! Можно и просто сказать «го в мафию» или «бот, закончим игру».",
     en: "Hi! I'm Beshemyek Bratan 🤙\n\n<b>General</b>\n• /features — all my features and what's on\n• /checkin — A/B check-in with member tags\n• /predictions — Beshemyek's prediction (reply/@user for someone else)\n• /crush — pick a random chat crush\n\n<b>Games</b>\n• /crocodile, /crocotop, /taboo, /truth_or_dare (/pod), /mafia\n• /cringe (reply to a message), /whothis, /who_said\n• /quiz (/aiesec_quiz), /two_truths, /meme_of_day\n• /bet Question | Opt1 | Opt2, /archetype, /excuse\n• /redbutton — red button (gamble coins)\n• /excuse_duel — excuse duel, /duel — 1×1 quiz duel\n• /endgame — cancel the current game (all members if enabled in dashboard)\n\n<b>Economy</b>\n• /roast (reply), /gift @user amount, /shop, /balance, /leaderboard\n\n<b>Tumba / shipping</b>\n• /tumba, /ama, /ship_optin, /ship_optout\n\n@mention me or reply to me and I'll chat back!",
   },
   welcome: {
@@ -249,7 +249,11 @@ export async function tgCall<T = any>(endpoint: string, body: Record<string, unk
 export type InlineButton = { text: string; callback_data?: string; url?: string };
 
 /** Slash-menu in group chats — only /features so it appears first when typing "/". */
-export const GROUP_BOT_COMMANDS = [{ command: "features", description: "Меню функций бота" }] as const;
+export const GROUP_BOT_COMMANDS = [
+  { command: "features", description: "Меню функций бота" },
+  { command: "crush", description: "Случайный краш" },
+  { command: "prediction", description: "Предикшн от Бешемека" },
+] as const;
 
 export async function syncBotCommands() {
   await tgCall("setMyCommands", {
