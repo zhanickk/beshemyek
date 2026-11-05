@@ -556,6 +556,7 @@ type TgChat = { id: number; type: string; title?: string; username?: string };
 type TgEntity = { type: string; offset: number; length: number };
 type TgMessage = {
   message_id: number;
+  message_thread_id?: number;
   date: number;
   from?: TgUser;
   chat: TgChat;
@@ -1490,6 +1491,10 @@ async function handleGroupMessage(
 ) {
   const chatId = message.chat.id;
   const text = message.text ?? "";
+  const threadReply =
+    message.message_thread_id !== undefined
+      ? { message_thread_id: message.message_thread_id }
+      : {};
 
   const chatRow = await ensureChat(admin, message.chat);
   if (!chatRow) return;
@@ -1795,7 +1800,15 @@ async function handleGroupMessage(
         await telegram.sendMessage(chatId, "Маловато вопросов в базе квиза для дуэли.");
       return;
     }
-    if ((cmd === "/prediction" || cmd === "/predictions") && (await isFeatureEnabled(admin, chatRow.id, "prediction"))) {
+    if (cmd === "/prediction" || cmd === "/predictions") {
+      if (!(await isFeatureEnabled(admin, chatRow.id, "prediction"))) {
+        await telegram.sendMessage(
+          chatId,
+          "🔮 Предсказания выключены для этого чата. Включи их в настройках /features.",
+          threadReply,
+        );
+        return;
+      }
       await telegram.sendChatAction(chatId, "typing");
       const targets = await resolvePredictionTargets(
         admin,
@@ -1809,7 +1822,7 @@ async function handleGroupMessage(
         invoker: predictionMemberFromTg(message.from!),
         targets: targets.length ? targets : undefined,
       });
-      await telegram.sendMessage(chatId, `${intro}\n${text}`);
+      await telegram.sendMessage(chatId, `${intro}\n${text}`, threadReply);
       return;
     }
     if (cmd === "/checkin" && (await isFeatureEnabled(admin, chatRow.id, "checkin"))) {
@@ -1929,7 +1942,7 @@ async function handleGroupMessage(
         .neq("telegram_user_id", message.from.id);
       if (error) throw error;
       if (!candidates?.length) {
-        await telegram.sendMessage(chatId, "Пока некого шипперить — позови в чат ещё мемберов 😅");
+        await telegram.sendMessage(chatId, "Пока некого шипперить — позови в чат ещё мемберов 😅", threadReply);
         return;
       }
 
@@ -1981,7 +1994,7 @@ async function handleGroupMessage(
         const reply = membershipCheckFailed
           ? "Не смог проверить состав чата. Чтобы я проверял мемберов, сделай меня админом чата и попробуй ещё раз."
           : "Не нашёл других активных мемберов для краша. Позови народ в чат 😅";
-        await telegram.sendMessage(chatId, reply);
+        await telegram.sendMessage(chatId, reply, threadReply);
         return;
       }
 
@@ -1995,7 +2008,7 @@ async function handleGroupMessage(
         lang === "ru"
           ? "💘 Твой краш сегодня: " + crush + "! Иди знакомься 😉"
           : "💘 Your crush is: " + crush + "! Go talk to them!";
-      await telegram.sendMessage(chatId, text);
+      await telegram.sendMessage(chatId, text, threadReply);
       return;
     }
     if (cmd === "/tumba" && (await isFeatureEnabled(admin, chatRow.id, "tumba"))) {
