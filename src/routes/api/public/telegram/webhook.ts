@@ -1495,10 +1495,19 @@ async function handleGroupMessage(
     message.message_thread_id !== undefined
       ? { message_thread_id: message.message_thread_id }
       : {};
+  const commandName = text.split(/\\s|@/)[0].toLowerCase();
+  const isManualCrushOrPrediction = ["/crush", "/prediction", "/predictions"].includes(commandName);
 
   const chatRow = await ensureChat(admin, message.chat);
   if (!chatRow) return;
-  if (!chatRow.is_active) return;
+  // Receiving a message proves the bot is currently in this group. Heal stale membership state.
+  if (!chatRow.is_active) {
+    const { error } = await admin
+      .from("chats")
+      .update({ is_active: true, title: message.chat.title ?? message.chat.username ?? "Chat" })
+      .eq("id", chatRow.id);
+    if (error) console.error("Failed to reactivate chat after receiving an update", error);
+  }
   scheduleDueTicks(admin, chatRow.id);
   await admin
     .from("chats")
@@ -1529,7 +1538,8 @@ async function handleGroupMessage(
     if (sovereignHandled) return;
   }
 
-  if (settings?.is_paused) return;
+  // A pause stops unsolicited replies, but explicit /crush and /prediction commands still work.
+  if (settings?.is_paused && !isManualCrushOrPrediction) return;
   if (isStaleTelegramDate(message.date, settings?.ignore_messages_before)) return;
 
   if (message.from && !message.from.is_bot) {
