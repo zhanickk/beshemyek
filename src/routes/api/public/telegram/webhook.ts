@@ -1920,6 +1920,31 @@ async function handleGroupMessage(
       await telegram.sendMessage(chatId, formatLeaderboardMessage(top));
       return;
     }
+    if (cmd === "/crush") {
+      if (!message.from) return;
+      const { data: candidates, error } = await admin
+        .from("chat_members")
+        .select("telegram_user_id, username, display_name")
+        .eq("chat_id", chatRow.id)
+        .neq("telegram_user_id", message.from.id);
+      if (error) throw error;
+      if (!candidates?.length) {
+        await telegram.sendMessage(chatId, "Пока некого шипперить — позови в чат ещё мемберов 😅");
+        return;
+      }
+      const picked = candidates[Math.floor(Math.random() * candidates.length)];
+      const crush = tgUserMention({
+        id: picked.telegram_user_id,
+        username: picked.username,
+        first_name: picked.display_name,
+      });
+      const text =
+        lang === "ru"
+          ? "💘 Твой краш сегодня: " + crush + "! Иди знакомься 😉"
+          : "💘 Your crush is: " + crush + "! Go talk to them!";
+      await telegram.sendMessage(chatId, text);
+      return;
+    }
     if (cmd === "/tumba" && (await isFeatureEnabled(admin, chatRow.id, "tumba"))) {
       await sendTumbaGroupReminder(chatId, chatRow.id, fromName);
       return;
