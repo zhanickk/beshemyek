@@ -1932,7 +1932,60 @@ async function handleGroupMessage(
         await telegram.sendMessage(chatId, "Пока некого шипперить — позови в чат ещё мемберов 😅");
         return;
       }
-      const picked = candidates[Math.floor(Math.random() * candidates.length)];
+
+      // chat_members is a historical roster, so confirm live membership before shipping.
+      // Telegram guarantees getChatMember for other users only when the bot is an admin.
+      const activeCandidates: typeof candidates = [];
+      let membershipCheckFailed = false;
+      for (let offset = 0; offset < candidates.length; offset += 8) {
+        const batch = candidates.slice(offset, offset + 8);
+        const checks = await Promise.all(
+          batch.map(async (candidate) => {
+            try {
+              const response: any = await telegram.getChatMember(chatId, candidate.telegram_user_id);
+              const member = response?.result;
+              if (!member?.status) {
+                return { candidate, active: false, checkFailed: true };
+              }
+              const active =
+                member.status === "creator" ||
+                member.status === "administrator" ||
+                member.status === "member" ||
+                (member.status === "restricted" && member.is_member === true);
+              if (active) return { candidate, active: true, checkFailed: false };
+
+              if (member.status === "left" || member.status === "kicked") {
+                const { error: deleteError } = await admin
+                  .from("chat_members")
+                  .delete()
+                  .eq("chat_id", chatRow.id)
+                  .eq("telegram_user_id", candidate.telegram_user_id);
+                if (deleteError) {
+                  console.error("Failed to remove departed chat member from roster", deleteError);
+                }
+              }
+              return { candidate, active: false, checkFailed: false };
+            } catch (checkError) {
+              console.error("Failed to verify Telegram chat membership", checkError);
+              return { candidate, active: false, checkFailed: true };
+            }
+          }),
+        );
+        for (const check of checks) {
+          if (check.active) activeCandidates.push(check.candidate);
+          if (check.checkFailed) membershipCheckFailed = true;
+        }
+      }
+
+      if (!activeCandidates.length) {
+        const reply = membershipCheckFailed
+          ? "Не смог проверить состав чата. Чтобы я проверял мемберов, сделай меня админом чата и попробуй ещё раз."
+          : "Не нашёл других активных мемберов для краша. Позови народ в чат 😅";
+        await telegram.sendMessage(chatId, reply);
+        return;
+      }
+
+      const picked = activeCandidates[Math.floor(Math.random() * activeCandidates.length)];
       const crush = tgUserMention({
         id: picked.telegram_user_id,
         username: picked.username,
